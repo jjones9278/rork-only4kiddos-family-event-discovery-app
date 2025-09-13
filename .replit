@@ -30,7 +30,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "bun run build:web && bun run start:prod"
+args = "EXPO_NO_TELEMETRY=1 EXPO_ROUTER_APP_ROOT=./app node ./node_modules/.bin/expo start --web --port 5000 --host tunnel"
 waitForPort = 5000
 
 [deployment]
