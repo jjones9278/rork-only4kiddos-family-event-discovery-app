@@ -25,7 +25,6 @@
       "package": "app.rork.only4kiddos-family-event-discovery"
     },
     "web": {
-      "bundler": "webpack",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
