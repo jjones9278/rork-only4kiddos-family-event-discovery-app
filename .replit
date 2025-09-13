@@ -30,7 +30,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "bun --bun run start-web"
+args = "bun run build:web && bun run start:prod"
 waitForPort = 5000
 
 [deployment]
