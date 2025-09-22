@@ -30,7 +30,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "EXPO_NO_TELEMETRY=1 EXPO_ROUTER_APP_ROOT=./app npx expo start --web --port 5000 --host tunnel"
+args = "bun ./node_modules/.bin/serve . -l 5000 --no-compression"
 waitForPort = 5000
 
 [deployment]
