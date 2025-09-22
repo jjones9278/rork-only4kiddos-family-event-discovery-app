@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { Plus, Calendar, Heart, Settings, ChevronRight, Edit2, Trash2, Star, Award } from 'lucide-react-native';
+import { Plus, Calendar, Heart, Settings, ChevronRight, Edit2, Trash2, Star, Award, Crown } from 'lucide-react-native';
 import { useEvents, useUpcomingBookings } from '@/hooks/use-events';
 import { ChildAvatar } from '@/components/ChildAvatar';
 import { BrandLogo } from '@/components/BrandLogo';
@@ -113,6 +113,14 @@ export default function ProfileScreen() {
             <Heart size={20} color={Colors.textSecondary} />
             <Text style={styles.menuText}>Saved Events</Text>
             <ChevronRight size={20} color={Colors.textTertiary} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.menuItem, styles.premiumMenuItem]}
+            onPress={() => router.push('/premium')}
+          >
+            <Crown size={20} color={Colors.accent} />
+            <Text style={[styles.menuText, styles.premiumText]}>Upgrade to Premium</Text>
+            <ChevronRight size={20} color={Colors.accent} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem}>
             <Settings size={20} color={Colors.textSecondary} />
@@ -311,5 +319,16 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSizes.base,
     color: Colors.textPrimary,
     marginLeft: Spacing.md,
+  },
+  premiumMenuItem: {
+    backgroundColor: Colors.brandSurface,
+    marginBottom: Spacing.sm,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: Colors.accent,
+  },
+  premiumText: {
+    color: Colors.accent,
+    fontWeight: Typography.fontWeights.semibold,
   },
 });
