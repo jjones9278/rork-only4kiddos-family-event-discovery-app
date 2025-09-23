@@ -1,0 +1,129 @@
+You are editing an Expo Router React Native app with a Bun + Hono tRPC backend.
+
+Goal:
+1) Remove the legacy EventsProvider and all mockEvents usage
+2) Switch all screens to the new tRPC hooks in hooks/use-events-trpc.ts
+3) Delete the client-side MailerLite service so no API key usage can sneak into the app
+4) Add consistent loading and error states
+5) Add helpful scripts to package.json and update README
+
+Make these exact edits.
+
+Search actions:
+1) Search for "@/hooks/use-events" imports and remove them across the app.
+2) Search for "mockEvents" and remove any remaining references.
+3) Search for "services/mailerlite" imports in non-backend files. There should be none. If any appear, remove them.
+
+File edits:
+
+A) app/_layout.tsx
+1) Remove:
+   import { EventsProvider } from "@/hooks/use-events"
+2) Remove the <EventsProvider> wrapper in the provider tree.
+   Keep QueryClientProvider, trpc.Provider, AuthProvider, ToastProvider, GestureHandlerRootView, and RootLayoutNav.
+
+B) Replace legacy hooks with tRPC hooks
+Update these files to stop using useEvents() and start using the new hooks from "@/hooks/use-events-trpc":
+   app/add-child.tsx
+   app/create-event.tsx
+   app/filters.tsx
+   app/(tabs)/(home)/index.tsx
+   app/(tabs)/profile/index.tsx
+   app/(tabs)/search/index.tsx
+   app/event/[id].tsx
+   components/EventCard.tsx
+
+Use these hooks as needed:
+   import {
+     useEventList,
+     useEventById,
+     useToggleFavorite,
+     useChildrenList,
+     useCreateChild,
+     useCreateEvent,
+     useCreateBooking
+   } from "@/hooks/use-events-trpc"
+
+Examples:
+1) Home screen list
+   const { data, isLoading, isError, refetch } = useEventList(filters)
+   Render loading and error states. When loaded, map over data.items.
+
+2) Event detail
+   const { data, isLoading, isError, refetch } = useEventById(id)
+
+3) Toggle favorite
+   const toggleFavorite = useToggleFavorite()
+   toggleFavorite.mutate({ eventId })
+
+4) Create child
+   const createChild = useCreateChild()
+   createChild.mutate(payload)
+
+5) Create event
+   const createEvent = useCreateEvent()
+   createEvent.mutate(payload)
+
+6) Create booking
+   const createBooking = useCreateBooking()
+   createBooking.mutate({ eventId, childIds, qty })
+
+C) Loading and error components
+1) Create components/LoadingState.tsx
+   A simple centered ActivityIndicator with an optional label prop.
+2) Create components/ErrorState.tsx
+   Shows a short message and a retry button that calls the refetch function passed as a prop.
+
+Use them like:
+   if (isLoading) return <LoadingState label="Loading events..." />
+   if (isError) return <ErrorState message="Could not load events." onRetry={refetch} />
+
+D) Toasts on mutations
+Use the existing ToastProvider helpers for success and error messages on create and toggle mutations. On success, invalidate related queries:
+   const utils = trpc.useContext()
+   utils.events.list.invalidate()
+   utils.bookings.list?.invalidate?.()
+
+E) MailerLite client file
+1) Delete the client file services/mailerlite.ts at the project root.
+2) Ensure the only MailerLite usage lives in backend/services/mailerlite.ts and is called through trpc.mailerlite.* procedures. Do not import any MailerLite code in app, components, hooks, or services outside backend.
+
+F) EventCard props
+If EventCard currently reads global provider state, refactor it to use props for its event data and call useToggleFavorite inside the card or pass a handler down from parent.
+
+G) package.json scripts
+Add:
+   "typecheck": "tsc --noEmit",
+   "format": "prettier --write .",
+   "lint": "eslint .",
+   "dev:all": "concurrently -k \"bun run backend/server.ts\" \"expo start\""
+Add devDependencies:
+   prettier
+   concurrently
+
+H) README.md
+Add sections:
+1) Environment Setup
+   Reference the keys in .env.example and what each does.
+2) Run Locally
+   Backend: bun run backend/server.ts
+   App: npx expo start
+3) Auth Flow
+   lib/trpc.ts attaches Firebase token. backend/middleware/auth.ts verifies it.
+
+Acceptance checks:
+1) No file imports "@/hooks/use-events".
+2) Searching for "mockEvents" returns zero results.
+3) The file services/mailerlite.ts at the app root is removed.
+4) Home and event detail screens read data from tRPC hooks.
+5) Favorite toggle and booking mutations run through tRPC and show toasts on success and error.
+6) package.json includes typecheck, format, lint, and dev:all scripts.
+7) README includes env and run instructions.
+
+After changes, run:
+   npm run typecheck
+   npm run lint
+   bun run backend/server.ts
+   npx expo start
+
+If any import paths break, fix them to point to hooks/use-events-trpc and components you just created. Keep TypeScript strict.
