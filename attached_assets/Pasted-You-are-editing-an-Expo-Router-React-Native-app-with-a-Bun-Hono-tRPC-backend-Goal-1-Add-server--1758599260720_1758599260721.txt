@@ -1,0 +1,227 @@
+You are editing an Expo Router React Native app with a Bun + Hono tRPC backend.
+
+Goal
+1) Add server guards to prevent overselling bookings and to validate inputs on the backend
+2) Add rate limiting, lightweight request logging, and body size limits
+3) Tighten CORS for production
+4) Remove leftover mocks from runtime
+5) Add a Prettier config and a CI workflow for typecheck and lint
+6) Add an EmptyState component and a small accessibility wrapper
+7) Add a small image helper to standardize usage
+
+Search and delete
+1) Delete file if it is not used in runtime:
+   mocks/events.ts
+   If you keep it for tests, move it to tests/mocks/events.ts
+
+New files to create
+
+A) backend/middleware/rateLimit.ts
+---------------------------------
+import type { Context, Next } from 'hono';
+
+type Bucket = { count: number; start: number };
+const WINDOW_MS = 60_000;
+const MAX = 60;
+const buckets = new Map<string, Bucket>();
+
+export function rateLimit() {
+  return async (c: Context, next: Next) => {
+    const now = Date.now();
+    const ip = c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || c.req.header('x-real-ip') || c.req.raw.headers.get('cf-connecting-ip') || 'unknown';
+    const bucket = buckets.get(ip) || { count: 0, start: now };
+    if (now - bucket.start > WINDOW_MS) {
+      bucket.count = 0;
+      bucket.start = now;
+    }
+    bucket.count += 1;
+    buckets.set(ip, bucket);
+    if (bucket.count > MAX) {
+      return c.text('Too many requests', 429);
+    }
+    await next();
+  };
+}
+
+B) backend/middleware/logger.ts
+-------------------------------
+import type { Context, Next } from 'hono';
+
+export function logger() {
+  return async (c: Context, next: Next) => {
+    const start = Date.now();
+    await next();
+    const ms = Date.now() - start;
+    const method = c.req.method;
+    const url = new URL(c.req.url);
+    const status = c.res.status;
+    console.log(`${method} ${url.pathname} ${status} ${ms}ms`);
+  };
+}
+
+C) components/EmptyState.tsx
+----------------------------
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+
+type Props = { title?: string; message?: string; actionLabel?: string; onPress?: () => void };
+export default function EmptyState({ title = 'Nothing here yet', message = 'Try adjusting your filters or come back later.', actionLabel, onPress }: Props) {
+  return (
+    <View style={styles.container} accessibilityRole="summary">
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.message}>{message}</Text>
+      {actionLabel && onPress ? (
+        <TouchableOpacity onPress={onPress} style={styles.btn} accessibilityRole="button" accessibilityLabel={actionLabel}>
+          <Text style={styles.btnText}>{actionLabel}</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+}
+const styles = StyleSheet.create({
+  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  title: { fontSize: 18, fontWeight: '600', marginBottom: 8 },
+  message: { fontSize: 14, opacity: 0.75, textAlign: 'center' },
+  btn: { marginTop: 12, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: '#222' },
+  btnText: { color: '#fff', fontWeight: '600' },
+});
+
+D) components/AccessiblePressable.tsx
+-------------------------------------
+import React from 'react';
+import { Pressable, PressableProps } from 'react-native';
+
+type Props = PressableProps & { minSize?: number };
+export default function AccessiblePressable({ minSize = 44, style, ...rest }: Props) {
+  return (
+    <Pressable
+      hitSlop={8}
+      style={[{ minWidth: minSize, minHeight: minSize, justifyContent: 'center', alignItems: 'center' }, style]}
+      {...rest}
+    />
+  );
+}
+
+E) lib/image.ts
+---------------
+import React from 'react';
+import { Image, ImageProps } from 'react-native';
+
+type Props = ImageProps & { w?: number; h?: number };
+export function AppImage({ w, h, style, resizeMode = 'cover', ...rest }: Props) {
+  return <Image resizeMode={resizeMode} style={[w && h ? { width: w, height: h } : null, style]} {...rest} />;
+}
+
+F) .prettierrc
+--------------
+{
+  "singleQuote": true,
+  "trailingComma": "all",
+  "semi": true,
+  "printWidth": 100
+}
+
+G) .github/workflows/ci.yml
+---------------------------
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+
+File changes
+
+1) backend/hono.ts
+   Import and use the new middlewares and add a body size guard.
+   At top:
+     import { rateLimit } from './middleware/rateLimit';
+     import { logger } from './middleware/logger';
+   After creating app:
+     app.use('*', logger());
+     app.use('*', rateLimit());
+     app.use('*', async (c, next) => {
+       const len = Number(c.req.header('content-length') || '0');
+       if (len > 1_000_000) return c.text('Payload too large', 413);
+       await next();
+     });
+   Confirm CORS logic denies by default in production. If ALLOWED_ORIGINS is empty in production, do not set wildcard. Return only the exact origins from env.
+
+2) backend/store/data.ts
+   Add atomic spot reservation and release to prevent overselling.
+   Add methods on eventStore:
+     async reserveSpots(eventId: string, qty: number) {
+       if (qty < 1) throw new Error('Invalid quantity');
+       const ev = store.events.get(eventId);
+       if (!ev) throw new Error('Event not found');
+       if (ev.spotsLeft < qty) throw new Error('Not enough spots left');
+       ev.spotsLeft = ev.spotsLeft - qty;
+       ev.updatedAt = new Date().toISOString();
+       store.events.set(eventId, ev);
+       return ev;
+     }
+     async releaseSpots(eventId: string, qty: number) {
+       const ev = store.events.get(eventId);
+       if (!ev) return null;
+       const max = ev.capacity;
+       ev.spotsLeft = Math.min(max, ev.spotsLeft + Math.max(0, qty || 0));
+       ev.updatedAt = new Date().toISOString();
+       store.events.set(eventId, ev);
+       return ev;
+     }
+
+3) backend/trpc/router.ts
+   In bookings.create mutation:
+     - Validate qty >= 1 server side
+     - Call eventStore.reserveSpots(input.eventId, input.qty)
+     - Create and return booking
+   In bookings.cancel (if present):
+     - Call eventStore.releaseSpots(booking.eventId, booking.childIds.length) before marking canceled
+
+   In favorites.toggle:
+     - Ensure it uses ctx.auth.userId and never trusts client identity fields
+
+4) components and screens
+   Use EmptyState wherever a list can be empty. Example in Home and Search:
+     if (!isLoading && !isError && data && data.items.length === 0) {
+       return <EmptyState title="No events found" message="Try different filters or dates." />;
+     }
+
+   Replace small touch targets with AccessiblePressable in places like favorite buttons on cards.
+
+5) package.json
+   Ensure scripts include:
+     "typecheck": "tsc --noEmit",
+     "format": "prettier --write .",
+     "lint": "eslint ."
+   Keep "dev:all" if you already added it.
+
+Acceptance checks
+1) bookings.create blocks qty < 1 and prevents overselling when spotsLeft is insufficient
+2) bookings.cancel returns spots via releaseSpots
+3) Hono app has logger, rateLimit, and a 1 MB body size cap
+4) Production CORS allows only ALLOWED_ORIGINS and does not wildcard
+5) mocks/events.ts is removed from runtime or moved under tests/
+6) .prettierrc exists and npm run format works
+7) CI runs typecheck and lint on push and PR
+8) Lists render EmptyState when data is empty
+9) Favorite toggles and other small buttons use AccessiblePressable or have min size 44 px
+
+Run after changes
+npm run typecheck
+npm run lint
+bun run backend/server.ts
+npx expo start
+
+Fix any import errors, keeping TypeScript strict.
