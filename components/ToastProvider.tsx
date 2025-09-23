@@ -263,8 +263,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   toastTitle: {
-    fontSize: Typography.fontSizes.md,
-    fontFamily: Typography.fontFamily.semibold,
+    fontSize: Typography.fontSizes.base,
+    fontWeight: Typography.fontWeights.semibold,
     marginBottom: 2,
   },
   toastMessage: {
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
   },
   toastActionText: {
     fontSize: Typography.fontSizes.sm,
-    fontFamily: Typography.fontFamily.semibold,
+    fontWeight: Typography.fontWeights.semibold,
     textDecorationLine: 'underline',
   },
   closeButton: {

@@ -34,10 +34,10 @@ async function getAuthToken(): Promise<string | null> {
 
 // Create the tRPC client with auth headers
 export const trpcClient = createTRPCClient<AppRouter>({
-  transformer: superjson, // Transformer at root level for v11
   links: [
     httpBatchLink({
       url: `${getBaseUrl()}/trpc`,
+      transformer: superjson, // Transformer on link for v11
       headers: async () => {
         const token = await getAuthToken();
         return {

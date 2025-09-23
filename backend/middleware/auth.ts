@@ -160,7 +160,7 @@ export async function createAuthContext(authHeader?: string): Promise<AuthContex
     return await verifyFirebaseToken(token);
   } catch (error) {
     // ONLY fall back to dev auth in development - NEVER in production
-    if (process.env.NODE_ENV === 'development' && process.env.NODE_ENV !== 'production') {
+    if (process.env.NODE_ENV === 'development') {
       console.warn('[DEV ONLY] Firebase Admin auth failed, falling back to dev auth - THIS MUST NOT RUN IN PRODUCTION');
       return await verifyTokenDev(token);
     }

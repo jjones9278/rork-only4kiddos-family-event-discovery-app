@@ -15,7 +15,7 @@ import { Colors, Typography, Spacing, BorderRadius } from '@/constants/colors';
 export default function ProfileScreen() {
   const { data: children = [], isLoading: childrenLoading, isError: childrenError, refetch: refetchChildren } = useChildren();
   const { data: favoriteEvents = [], isLoading: favoritesLoading } = useFavoriteEvents();
-  const { data: upcomingBookings = [], isLoading: bookingsLoading } = useUpcomingBookings();
+  const { upcomingBookings } = useUpcomingBookings();
   const deleteChild = useDeleteChild();
   const { user, signOut } = useAuth();
   const { toastSuccess, toastError } = useToastHelpers();
@@ -130,7 +130,7 @@ export default function ProfileScreen() {
         <View style={styles.statsGrid}>
           <View style={[styles.statCard, styles.primaryStatCard]}>
             <Calendar size={24} color={Colors.primary} />
-            <Text style={styles.statNumber}>{upcomingBookings.length}</Text>
+            <Text style={styles.statNumber}>{upcomingBookings?.length || 0}</Text>
             <Text style={styles.statLabel}>Upcoming</Text>
           </View>
           <View style={[styles.statCard, styles.secondaryStatCard]}>
@@ -161,7 +161,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.menuItem, styles.premiumMenuItem]}
-            onPress={() => router.push('/premium')}
+            onPress={() => console.log('Premium feature coming soon')}
           >
             <Crown size={20} color={Colors.accent} />
             <Text style={[styles.menuText, styles.premiumText]}>Upgrade to Premium</Text>
@@ -169,7 +169,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
           <TouchableOpacity 
             style={styles.menuItem}
-            onPress={() => router.push('/newsletter-settings')}
+            onPress={() => console.log('Newsletter settings coming soon')}
           >
             <Mail size={20} color={Colors.textSecondary} />
             <Text style={styles.menuText}>Email Preferences</Text>
