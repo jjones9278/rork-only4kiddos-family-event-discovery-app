@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Only4kiddos Family Event Discovery App",
-    "slug": "only4kiddos-family-event-discovery",
+    "name": "Only4Kiddos",
+    "slug": "only4kiddos",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "only4kiddos",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -15,7 +15,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.rork.only4kiddos-family-event-discovery",
+      "bundleIdentifier": "com.yourcompany.only4kiddos",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "We show relevant events near you."
+      },
       "config": {
         "googleMapsApiKey": "GOOGLE_MAPS_IOS_API_KEY"
       }
@@ -25,7 +28,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "app.rork.only4kiddos-family-event-discovery",
+      "package": "com.yourcompany.only4kiddos",
       "config": {
         "googleMaps": {
           "apiKey": "GOOGLE_MAPS_ANDROID_API_KEY"
@@ -40,6 +43,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "your-eas-project-id"
+      }
     }
   }
 }

@@ -1,0 +1,63 @@
+You are editing an Expo app that will be shipped with EAS to both app stores.
+
+Goal
+Audit and, if needed, update build config so the project can be built and submitted to the App Store (TestFlight) and Google Play (Internal testing) without changing app logic.
+
+Make these edits safely (idempotent):
+1) app.config.ts (or app.json if that’s what the repo uses)
+   - Ensure these fields are present and filled:
+     name: "Only4Kiddos"
+     slug: "only4kiddos"
+     scheme: "only4kiddos"
+     version: "1.0.0"
+     ios.bundleIdentifier: "com.yourcompany.only4kiddos"          // replace with the real one
+     android.package: "com.yourcompany.only4kiddos"               // replace with the real one
+     ios.infoPlist.NSLocationWhenInUseUsageDescription: "We show relevant events near you."
+     extra.eas.projectId is present (or add if missing)
+   - Do not add NSUserTrackingUsageDescription unless the app truly uses cross-app tracking.
+
+2) eas.json
+   - Create or update with:
+     {
+       "cli": { "version": ">= 10.0.0" },
+       "build": {
+         "production": {
+           "android": { "buildType": "app-bundle" },
+           "ios": { "simulator": false }
+         }
+       },
+       "submit": {
+         "production": {
+           "android": { "track": "internal" },
+           "ios": {}
+         }
+       }
+     }
+
+3) Assets sanity check (no placeholders—only adjust paths if they already exist)
+   - Confirm app icon path points to an existing 1024x1024 file (e.g., ./assets/icon.png).
+   - Confirm splash/icon/adaptiveIcon references point to existing files on Android and iOS sections.
+
+4) Permissions and descriptions
+   - If the app uses location, ensure the iOS location string above is present.
+   - Don’t add permissions you don’t use.
+
+5) Environment
+   - Leave EXPO_PUBLIC_API_BASE_URL usage as-is.
+   - No secrets should be in EXPO_PUBLIC_ variables.
+
+6) Scripts (optional, only add if missing)
+   - In package.json, ensure these exist but do not remove existing scripts:
+     "typecheck": "tsc --noEmit",
+     "lint": "eslint ."
+
+Acceptance
+- app.config.ts (or app.json) has valid bundleIdentifier (iOS) and package (Android), a scheme, and version.
+- eas.json has a production profile for both platforms.
+- Icon/splash/adaptive icons point to real files that exist.
+- No tracking permission string added unless truly required.
+- No runtime code changed.
+
+Output
+- Show a short diff of modified files.
+- Print the relevant final sections of app.config.ts/app.json and eas.json.
