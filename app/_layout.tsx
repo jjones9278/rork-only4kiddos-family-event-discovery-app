@@ -5,6 +5,7 @@ import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { EventsProvider } from "@/hooks/use-events";
 import { initializeMailerLite } from "@/services/mailerlite";
+import { AuthProvider } from "@/context/AuthContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -63,6 +64,20 @@ function RootLayoutNav() {
           presentation: "card",
         }} 
       />
+      <Stack.Screen 
+        name="login" 
+        options={{ 
+          title: "Sign In",
+          presentation: "modal",
+        }} 
+      />
+      <Stack.Screen 
+        name="signup" 
+        options={{ 
+          title: "Create Account",
+          presentation: "modal",
+        }} 
+      />
     </Stack>
   );
 }
@@ -87,11 +102,13 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <EventsProvider>
-        <GestureHandlerRootView>
-          <RootLayoutNav />
-        </GestureHandlerRootView>
-      </EventsProvider>
+      <AuthProvider>
+        <EventsProvider>
+          <GestureHandlerRootView>
+            <RootLayoutNav />
+          </GestureHandlerRootView>
+        </EventsProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
