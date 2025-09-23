@@ -7,6 +7,7 @@ import { useRouter, useLocalSearchParams, Stack, router } from 'expo-router';
 import { BrandedButton } from '@/components/BrandedButton';
 import { BrandedHeader } from '@/components/BrandedHeader';
 import { BrandedSpinner } from '@/components/BrandedSpinner';
+import { AuthGuard } from '@/components/AuthGuard';
 
 // Load Stripe (will be configured with environment variable)
 const stripePromise = loadStripe(process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
@@ -130,11 +131,13 @@ export default function Checkout() {
   }
 
   return (
-    <View className="flex-1 bg-white">
-      <Stack.Screen options={{ title: 'Purchase Tickets' }} />
+    <AuthGuard>
+      <View className="flex-1 bg-white">
+        <Stack.Screen options={{ title: 'Purchase Tickets' }} />
       <Elements stripe={stripePromise} options={{ clientSecret }}>
         <CheckoutForm eventTitle={eventName} amount={ticketPrice} />
       </Elements>
-    </View>
+      </View>
+    </AuthGuard>
   );
 }

@@ -1,15 +1,40 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { Plus, Calendar, Heart, Settings, ChevronRight, Edit2, Trash2, Star, Award, Crown, Mail } from 'lucide-react-native';
+import { Plus, Calendar, Heart, Settings, ChevronRight, Edit2, Trash2, Star, Award, Crown, Mail, LogOut } from 'lucide-react-native';
 import { useEvents, useUpcomingBookings } from '@/hooks/use-events';
 import { ChildAvatar } from '@/components/ChildAvatar';
 import { BrandLogo } from '@/components/BrandLogo';
+import { AuthGuard } from '@/components/AuthGuard';
+import { useAuth } from '@/context/AuthContext';
 import { router } from 'expo-router';
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/colors';
 
 export default function ProfileScreen() {
   const { children, favorites, deleteChild } = useEvents();
   const upcomingBookings = useUpcomingBookings();
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Sign Out', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut();
+              router.replace('/login' as any);
+            } catch (error) {
+              Alert.alert('Error', 'Failed to sign out');
+            }
+          }
+        },
+      ]
+    );
+  };
 
   const handleDeleteChild = (childId: string, childName: string) => {
     Alert.alert(
@@ -27,10 +52,12 @@ export default function ProfileScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <AuthGuard>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <View style={styles.brandContainer}>
           <BrandLogo size="large" showTagline={true} />
+          <Text style={styles.userName}>Welcome, {user?.displayName || user?.email || 'Family Member'}!</Text>
           <View style={styles.membershipBadge}>
             <Star size={16} color={Colors.accent} />
             <Text style={styles.membershipText}>Premium Family</Text>
@@ -135,9 +162,17 @@ export default function ProfileScreen() {
             <Text style={styles.menuText}>Settings</Text>
             <ChevronRight size={20} color={Colors.textTertiary} />
           </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.menuItem, styles.signOutMenuItem]}
+            onPress={handleSignOut}
+          >
+            <LogOut size={20} color={Colors.error} />
+            <Text style={[styles.menuText, styles.signOutText]}>Sign Out</Text>
+          </TouchableOpacity>
         </View>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </AuthGuard>
   );
 }
 
@@ -338,5 +373,21 @@ const styles = StyleSheet.create({
   premiumText: {
     color: Colors.accent,
     fontWeight: Typography.fontWeights.semibold,
+  },
+  userName: {
+    fontSize: Typography.fontSizes.lg,
+    fontWeight: Typography.fontWeights.semibold,
+    color: Colors.textPrimary,
+    marginTop: Spacing.sm,
+    textAlign: 'center',
+  },
+  signOutMenuItem: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    marginTop: Spacing.sm,
+    paddingTop: Spacing.lg,
+  },
+  signOutText: {
+    color: Colors.error,
   },
 });
