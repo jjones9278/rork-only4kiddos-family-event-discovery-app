@@ -11,16 +11,8 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 36341
-externalPort = 3001
-
-[[ports]]
 localPort = 36687
 externalPort = 3000
-
-[[ports]]
-localPort = 42201
-externalPort = 3002
 
 [workflows]
 runButton = "Project"
@@ -38,13 +30,13 @@ args = "Expo Web Server"
 name = "Expo Web Server"
 author = "agent"
 
-[workflows.workflow.metadata]
-outputType = "webview"
-
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "bun ./node_modules/.bin/serve . -l 5000 --no-compression"
 waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
 
 [deployment]
 deploymentTarget = "autoscale"
