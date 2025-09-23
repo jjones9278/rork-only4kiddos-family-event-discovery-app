@@ -4,8 +4,9 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { EventsProvider } from "@/hooks/use-events";
-import { initializeMailerLite } from "@/services/mailerlite";
+// MailerLite is now handled by the backend - no client initialization needed
 import { AuthProvider } from "@/context/AuthContext";
+import { ToastProvider } from "@/components/ToastProvider";
 import { trpc, trpcClient } from "@/lib/trpc";
 
 SplashScreen.preventAutoHideAsync();
@@ -86,30 +87,20 @@ function RootLayoutNav() {
 export default function RootLayout() {
   useEffect(() => {
     SplashScreen.hideAsync();
-    
-    // Initialize MailerLite service
-    const apiKey = process.env.EXPO_PUBLIC_MAILERLITE_API_KEY;
-    if (apiKey) {
-      try {
-        initializeMailerLite(apiKey);
-        console.log('MailerLite service initialized successfully');
-      } catch (error) {
-        console.error('Failed to initialize MailerLite:', error);
-      }
-    } else {
-      console.warn('EXPO_PUBLIC_MAILERLITE_API_KEY not found');
-    }
+    // MailerLite is now handled securely by the backend
   }, []);
 
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <EventsProvider>
-            <GestureHandlerRootView>
-              <RootLayoutNav />
-            </GestureHandlerRootView>
-          </EventsProvider>
+          <ToastProvider>
+            <EventsProvider>
+              <GestureHandlerRootView>
+                <RootLayoutNav />
+              </GestureHandlerRootView>
+            </EventsProvider>
+          </ToastProvider>
         </AuthProvider>
       </QueryClientProvider>
     </trpc.Provider>

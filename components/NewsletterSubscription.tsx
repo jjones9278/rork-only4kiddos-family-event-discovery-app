@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, Alert } from 'react-native';
 import { Mail, Send, CheckCircle } from 'lucide-react-native';
 import { BrandedButton } from './BrandedButton';
-import { getMailerLiteService } from '@/services/mailerlite';
+import { useSubscribeToNewsletter, useSubscribeToCategory, useSubscribeToPremium } from '@/hooks/use-events-trpc';
+import { useToastHelpers } from './ToastProvider';
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/colors';
 
 interface NewsletterSubscriptionProps {
@@ -28,8 +29,13 @@ export function NewsletterSubscription({
 }: NewsletterSubscriptionProps) {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
-  const [loading, setLoading] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
+  
+  // Use tRPC mutations for secure backend MailerLite calls
+  const subscribeToNewsletter = useSubscribeToNewsletter();
+  const subscribeToCategory = useSubscribeToCategory();
+  const subscribeToPremium = useSubscribeToPremium();
+  const { toastSuccess, toastError } = useToastHelpers();
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -47,42 +53,42 @@ export function NewsletterSubscription({
       return;
     }
 
-    setLoading(true);
+    const subscriptionData = {
+      email: email.trim(),
+      name: name.trim() || undefined,
+      subscriptionType: subscriptionType as any,
+    };
 
     try {
-      const mailerLite = getMailerLiteService();
-      let result;
+      let mutation;
+      let successMessage = '';
 
       switch (subscriptionType) {
         case 'category_updates':
           if (!category) {
             Alert.alert('Error', 'Category not specified');
-            setLoading(false);
             return;
           }
-          result = await mailerLite.subscribeToCategory(email, category, name || undefined);
+          mutation = subscribeToCategory.mutateAsync({
+            ...subscriptionData,
+            category,
+          });
+          successMessage = `Successfully subscribed to ${category} updates!`;
           break;
         case 'premium_member':
-          result = await mailerLite.subscribeToPremiumUpdates(email, name || undefined);
+          mutation = subscribeToPremium.mutateAsync(subscriptionData);
+          successMessage = 'Successfully subscribed to premium updates!';
           break;
         default:
-          result = await mailerLite.subscribeToEventUpdates(email, name || undefined);
+          mutation = subscribeToNewsletter.mutateAsync(subscriptionData);
+          successMessage = 'Successfully subscribed to family event updates!';
       }
 
-      if (result.error) {
-        Alert.alert(
-          'Subscription Failed',
-          result.message || 'Unable to subscribe at this time. Please try again.',
-          [{ text: 'OK' }]
-        );
-        onError?.(result.error);
-      } else {
+      const result = await mutation;
+
+      if (result.success) {
         setSubscribed(true);
-        Alert.alert(
-          'Success!',
-          'Thank you for subscribing! You\'ll receive amazing family event updates.',
-          [{ text: 'Great!' }]
-        );
+        toastSuccess('Subscription Successful!', result.message);
         onSuccess?.(email);
         
         // Reset form after successful subscription
@@ -91,17 +97,15 @@ export function NewsletterSubscription({
           setName('');
           setSubscribed(false);
         }, 3000);
+      } else {
+        toastError('Subscription Failed', result.message);
+        onError?.(result.message);
       }
     } catch (error) {
-      Alert.alert(
-        'Error',
-        'Unable to process subscription. Please check your connection and try again.',
-        [{ text: 'OK' }]
-      );
+      console.error('Newsletter subscription error:', error);
+      toastError('Network Error', 'Unable to subscribe at this time. Please try again.');
       onError?.('Service unavailable');
     }
-
-    setLoading(false);
   };
 
   if (subscribed) {
@@ -153,9 +157,20 @@ export function NewsletterSubscription({
         />
 
         <BrandedButton
-          title={loading ? "Subscribing..." : "Subscribe"}
+          title={
+            subscribeToNewsletter.isPending || 
+            subscribeToCategory.isPending || 
+            subscribeToPremium.isPending 
+              ? "Subscribing..." 
+              : "Subscribe"
+          }
           onPress={handleSubscribe}
-          disabled={loading || !email.trim()}
+          disabled={
+            subscribeToNewsletter.isPending || 
+            subscribeToCategory.isPending || 
+            subscribeToPremium.isPending || 
+            !email.trim()
+          }
           icon={<Send size={16} color={Colors.textOnPrimary} />}
         />
       </View>
