@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { EventsProvider } from "@/hooks/use-events";
 import { initializeMailerLite } from "@/services/mailerlite";
 import { AuthProvider } from "@/context/AuthContext";
+// Note: trpc import will be added after dependencies are installed
 
 SplashScreen.preventAutoHideAsync();
 
