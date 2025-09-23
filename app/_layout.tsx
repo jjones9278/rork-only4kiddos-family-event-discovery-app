@@ -4,6 +4,7 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { EventsProvider } from "@/hooks/use-events";
+import { initializeMailerLite } from "@/services/mailerlite";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -41,6 +42,27 @@ function RootLayoutNav() {
           presentation: "modal",
         }} 
       />
+      <Stack.Screen 
+        name="checkout" 
+        options={{ 
+          title: "Purchase Tickets",
+          presentation: "card",
+        }} 
+      />
+      <Stack.Screen 
+        name="premium" 
+        options={{ 
+          title: "Premium Subscription",
+          presentation: "card",
+        }} 
+      />
+      <Stack.Screen 
+        name="newsletter-settings" 
+        options={{ 
+          title: "Email Preferences",
+          presentation: "card",
+        }} 
+      />
     </Stack>
   );
 }
@@ -48,6 +70,19 @@ function RootLayoutNav() {
 export default function RootLayout() {
   useEffect(() => {
     SplashScreen.hideAsync();
+    
+    // Initialize MailerLite service
+    const apiKey = process.env.EXPO_PUBLIC_MAILERLITE_API_KEY;
+    if (apiKey) {
+      try {
+        initializeMailerLite(apiKey);
+        console.log('MailerLite service initialized successfully');
+      } catch (error) {
+        console.error('Failed to initialize MailerLite:', error);
+      }
+    } else {
+      console.warn('EXPO_PUBLIC_MAILERLITE_API_KEY not found');
+    }
   }, []);
 
   return (
