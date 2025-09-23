@@ -4,6 +4,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { Calendar, MapPin, Users, Clock, Heart, Share2, DollarSign, Tag, Accessibility } from 'lucide-react-native';
 import { useEvents } from '@/hooks/use-events';
 import { ChildAvatar } from '@/components/ChildAvatar';
+import { EventMap } from '@/components/EventMap';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function EventDetailsScreen() {
@@ -146,6 +147,11 @@ export default function EventDetailsScreen() {
               <Text style={styles.infoText}>{event.ageRange.min}-{event.ageRange.max} years</Text>
             </View>
           </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Location</Text>
+          <EventMap event={event} height={250} />
         </View>
 
         <View style={styles.section}>

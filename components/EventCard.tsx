@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { Heart, MapPin, Calendar, Users } from 'lucide-react-native';
+import { Heart, MapPin, Calendar, Users, Navigation } from 'lucide-react-native';
 import { Event } from '@/types/event';
 import { useEvents } from '@/hooks/use-events';
 import { router } from 'expo-router';
@@ -68,6 +68,21 @@ export function EventCard({ event, onPress }: EventCardProps) {
           <View style={styles.detailRow}>
             <MapPin size={14} color={Colors.textSecondary} />
             <Text style={styles.detailText} numberOfLines={1}>{event.location}</Text>
+            <TouchableOpacity 
+              style={styles.mapButton}
+              onPress={(e) => {
+                e.stopPropagation();
+                const latitude = event.latitude || 37.7749;
+                const longitude = event.longitude || -122.4194;
+                const url = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+                // For web, open in new tab
+                if (typeof window !== 'undefined') {
+                  window.open(url, '_blank');
+                }
+              }}
+            >
+              <Navigation size={12} color={Colors.primary} />
+            </TouchableOpacity>
           </View>
           
           <View style={styles.footer}>
@@ -228,5 +243,11 @@ const styles = StyleSheet.create({
     color: Colors.textOnPrimary,
     fontSize: Typography.fontSizes.xs,
     fontWeight: Typography.fontWeights.bold,
+  },
+  mapButton: {
+    padding: Spacing.xs,
+    backgroundColor: Colors.brandSurface,
+    borderRadius: BorderRadius.sm,
+    marginLeft: Spacing.xs,
   },
 });
