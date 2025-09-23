@@ -184,6 +184,28 @@ export const eventStore = {
   async delete(id: string) {
     return store.events.delete(id);
   },
+
+  // Atomic spot reservation to prevent overselling
+  async reserveSpots(eventId: string, qty: number) {
+    if (qty < 1) throw new Error('Invalid quantity');
+    const ev = store.events.get(eventId);
+    if (!ev) throw new Error('Event not found');
+    if (ev.spotsLeft < qty) throw new Error('Not enough spots left');
+    ev.spotsLeft = ev.spotsLeft - qty;
+    ev.updatedAt = new Date().toISOString();
+    store.events.set(eventId, ev);
+    return ev;
+  },
+  
+  async releaseSpots(eventId: string, qty: number) {
+    const ev = store.events.get(eventId);
+    if (!ev) return null;
+    const max = ev.capacity;
+    ev.spotsLeft = Math.min(max, ev.spotsLeft + Math.max(0, qty || 0));
+    ev.updatedAt = new Date().toISOString();
+    store.events.set(eventId, ev);
+    return ev;
+  },
 };
 
 // Child operations
@@ -254,16 +276,8 @@ export const bookingStore = {
       updatedAt: now,
     };
     
-    // Update event spots left
-    const event = store.events.get(booking.eventId);
-    if (event) {
-      const updatedEvent = {
-        ...event,
-        spotsLeft: Math.max(0, event.spotsLeft - booking.childIds.length),
-        updatedAt: now,
-      };
-      store.events.set(booking.eventId, updatedEvent);
-    }
+    // Note: Spot reservation is now handled atomically by eventStore.reserveSpots()
+    // before this method is called, so we don't need to manually update spotsLeft here
     
     store.bookings.set(id, newBooking);
     return newBooking;
@@ -288,16 +302,8 @@ export const bookingStore = {
     const booking = store.bookings.get(id);
     if (!booking) return null;
 
-    // Restore event spots
-    const event = store.events.get(booking.eventId);
-    if (event && booking.status !== 'cancelled') {
-      const updatedEvent = {
-        ...event,
-        spotsLeft: event.spotsLeft + booking.childIds.length,
-        updatedAt: new Date().toISOString(),
-      };
-      store.events.set(booking.eventId, updatedEvent);
-    }
+    // Note: Spot release is now handled by eventStore.releaseSpots()
+    // in the tRPC router after this method completes, for better separation of concerns
 
     // Update booking status
     const cancelledBooking = {

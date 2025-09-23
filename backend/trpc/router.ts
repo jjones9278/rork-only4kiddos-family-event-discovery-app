@@ -216,14 +216,10 @@ const bookingsRouter = router({
     .input(CreateBookingInputSchema)
     .output(BookingSchema)
     .mutation(async ({ input, ctx }) => {
-      // Validate that the event exists and has available spots
-      const event = await eventStore.getById(input.eventId);
-      if (!event) {
-        throw new Error('Event not found');
-      }
-
-      if (event.spotsLeft < input.childIds.length) {
-        throw new Error('Not enough spots available for this event');
+      // Server-side validation: quantity must be >= 1
+      const qty = input.childIds.length;
+      if (qty < 1) {
+        throw new Error('Invalid quantity: must book for at least 1 child');
       }
 
       // Validate that all children belong to the user
@@ -235,20 +231,29 @@ const bookingsRouter = router({
         throw new Error('One or more children do not belong to you');
       }
 
-      // Calculate total amount
-      const totalAmount = event.price * input.childIds.length;
+      // Atomically reserve spots (prevents overselling)
+      const updatedEvent = await eventStore.reserveSpots(input.eventId, qty);
 
-      const bookingData = {
-        eventId: input.eventId,
-        childIds: input.childIds,
-        status: 'confirmed' as const,
-        totalAmount,
-        userId: ctx.auth.userId,
-        paymentStatus: 'pending' as const,
-      };
-      const booking = await bookingStore.create(bookingData, ctx.auth.userId);
+      try {
+        // Calculate total amount
+        const totalAmount = updatedEvent.price * qty;
 
-      return booking;
+        const bookingData = {
+          eventId: input.eventId,
+          childIds: input.childIds,
+          status: 'confirmed' as const,
+          totalAmount,
+          userId: ctx.auth.userId,
+          paymentStatus: 'pending' as const,
+        };
+        const booking = await bookingStore.create(bookingData, ctx.auth.userId);
+
+        return booking;
+      } catch (bookingError) {
+        // If booking creation fails, release the reserved spots
+        await eventStore.releaseSpots(input.eventId, qty);
+        throw bookingError;
+      }
     }),
 
   // Cancel booking
@@ -272,6 +277,12 @@ const bookingsRouter = router({
       }
 
       const cancelledBooking = await bookingStore.cancel(input.id);
+      
+      // Release spots back to the event
+      if (cancelledBooking) {
+        await eventStore.releaseSpots(cancelledBooking.eventId, cancelledBooking.childIds.length);
+      }
+      
       return cancelledBooking;
     }),
 });
