@@ -14,6 +14,10 @@ externalPort = 3001
 localPort = 36687
 externalPort = 3000
 
+[[ports]]
+localPort = 5000
+externalPort = 80
+
 [workflows]
 runButton = "Project"
 
@@ -24,23 +28,11 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Expo Web Server"
+args = "Backend tRPC Server"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Backend tRPC Server"
-
-[[workflows.workflow]]
-name = "Expo Web Server"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "bun ./node_modules/.bin/serve . -l 5000 --no-compression"
-waitForPort = 5000
-
-[workflows.workflow.metadata]
-outputType = "webview"
+args = "Expo Web Server"
 
 [[workflows.workflow]]
 name = "Backend tRPC Server"
@@ -53,6 +45,18 @@ waitForPort = 3001
 
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow]]
+name = "Expo Web Server"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "bun ./node_modules/.bin/serve . -l 5000 --no-compression"
+waitForPort = 5000
 
 [deployment]
 deploymentTarget = "autoscale"
