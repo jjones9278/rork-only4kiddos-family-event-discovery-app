@@ -15,7 +15,8 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourcompany.only4kiddos",
+      "bundleIdentifier": "COM.YOURDOMAIN.ONLY4KIDDOS",
+      "buildNumber": "1",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We show relevant events near you."
       },
@@ -28,7 +29,8 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.yourcompany.only4kiddos",
+      "package": "COM.YOURDOMAIN.ONLY4KIDDOS",
+      "versionCode": 1,
       "config": {
         "googleMaps": {
           "apiKey": "GOOGLE_MAPS_ANDROID_API_KEY"
@@ -46,7 +48,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "your-eas-project-id"
+        "projectId": "YOUR_REAL_EAS_PROJECT_ID"
       }
     }
   }
