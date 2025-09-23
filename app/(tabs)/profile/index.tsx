@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { Plus, Calendar, Heart, Settings, ChevronRight, Edit2, Trash2, Star, Award, Crown } from 'lucide-react-native';
+import { Plus, Calendar, Heart, Settings, ChevronRight, Edit2, Trash2, Star, Award, Crown, Mail } from 'lucide-react-native';
 import { useEvents, useUpcomingBookings } from '@/hooks/use-events';
 import { ChildAvatar } from '@/components/ChildAvatar';
 import { BrandLogo } from '@/components/BrandLogo';
@@ -121,6 +121,14 @@ export default function ProfileScreen() {
             <Crown size={20} color={Colors.accent} />
             <Text style={[styles.menuText, styles.premiumText]}>Upgrade to Premium</Text>
             <ChevronRight size={20} color={Colors.accent} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => router.push('/newsletter-settings')}
+          >
+            <Mail size={20} color={Colors.textSecondary} />
+            <Text style={styles.menuText}>Email Preferences</Text>
+            <ChevronRight size={20} color={Colors.textTertiary} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem}>
             <Settings size={20} color={Colors.textSecondary} />
