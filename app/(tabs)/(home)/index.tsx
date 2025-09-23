@@ -7,6 +7,7 @@ import { BrandedHeader } from '@/components/BrandedHeader';
 import { NewsletterSubscription } from '@/components/NewsletterSubscription';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
+import EmptyState from '@/components/EmptyState';
 import { useEventList } from '@/hooks/use-events-trpc';
 import { useToastHelpers } from '@/components/ToastProvider';
 import { EventCategory } from '@/types/event';
@@ -26,6 +27,11 @@ export default function HomeScreen() {
   
   const { data, isLoading, isError, refetch } = useEventList(filters);
   const events = data?.items || [];
+
+  // Show empty state when no events found
+  if (!isLoading && !isError && data && data.items.length === 0) {
+    return <EmptyState title="No events found" message="Try different filters or check back later for new events." />;
+  }
 
   const handleCategoryToggle = (category: EventCategory) => {
     const updated = selectedCategories.includes(category)

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Heart, MapPin, Calendar, Users, Navigation } from 'lucide-react-native';
 import { Event } from '@/types/event';
 import { useToggleFavorite } from '@/hooks/use-events-trpc';
+import AccessiblePressable from '@/components/AccessiblePressable';
 import { router } from 'expo-router';
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/colors';
 
@@ -31,8 +32,9 @@ export function EventCard({ event, onPress }: EventCardProps) {
     <TouchableOpacity style={styles.container} onPress={handlePress} activeOpacity={0.9}>
       <View style={styles.imageContainer}>
         <Image source={{ uri: event.imageUrl }} style={styles.image} />
-        <TouchableOpacity 
-          style={styles.favoriteButton} 
+        <AccessiblePressable 
+          style={styles.favoriteButton}
+          accessibilityLabel={event.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
           onPress={(e) => {
             e.stopPropagation();
             toggleFavorite.mutate({ eventId: event.id });
@@ -44,7 +46,7 @@ export function EventCard({ event, onPress }: EventCardProps) {
             color={event.isFavorite ? Colors.accentPink : Colors.textOnPrimary}
             fill={event.isFavorite ? Colors.accentPink : 'transparent'}
           />
-        </TouchableOpacity>
+        </AccessiblePressable>
         {event.price === 0 && (
           <View style={styles.freeTag}>
             <Text style={styles.freeText}>FREE</Text>
@@ -69,8 +71,9 @@ export function EventCard({ event, onPress }: EventCardProps) {
           <View style={styles.detailRow}>
             <MapPin size={14} color={Colors.textSecondary} />
             <Text style={styles.detailText} numberOfLines={1}>{event.location}</Text>
-            <TouchableOpacity 
+            <AccessiblePressable 
               style={styles.mapButton}
+              accessibilityLabel="Open in maps"
               onPress={(e) => {
                 e.stopPropagation();
                 const latitude = event.latitude || 37.7749;
@@ -83,7 +86,7 @@ export function EventCard({ event, onPress }: EventCardProps) {
               }}
             >
               <Navigation size={12} color={Colors.primary} />
-            </TouchableOpacity>
+            </AccessiblePressable>
           </View>
           
           <View style={styles.footer}>

@@ -4,6 +4,8 @@ import { Plus, Calendar, Heart, Settings, ChevronRight, Edit2, Trash2, Star, Awa
 import { useChildren, useFavoriteEvents, useUpcomingBookings, useDeleteChild } from '@/hooks/use-events-trpc';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
+import EmptyState from '@/components/EmptyState';
+import AccessiblePressable from '@/components/AccessiblePressable';
 import { useToastHelpers } from '@/components/ToastProvider';
 import { ChildAvatar } from '@/components/ChildAvatar';
 import { BrandLogo } from '@/components/BrandLogo';
@@ -97,10 +99,10 @@ export default function ProfileScreen() {
         </View>
 
         {children.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No children added yet</Text>
-            <Text style={styles.emptySubtext}>Add your children to personalize event recommendations</Text>
-          </View>
+          <EmptyState 
+            title="No children added yet" 
+            message="Add your children to personalize event recommendations" 
+          />
         ) : (
           <View style={styles.childrenGrid}>
             {children.map((child: any) => (
@@ -109,15 +111,19 @@ export default function ProfileScreen() {
                 <Text style={styles.childName}>{child.name}</Text>
                 <Text style={styles.childAge}>Age {child.age}</Text>
                 <View style={styles.childActions}>
-                  <TouchableOpacity style={styles.childActionButton}>
-                    <Edit2 size={16} color={Colors.textSecondary} />
-                  </TouchableOpacity>
-                  <TouchableOpacity 
+                  <AccessiblePressable 
                     style={styles.childActionButton}
+                    accessibilityLabel={`Edit ${child.name}'s profile`}
+                  >
+                    <Edit2 size={16} color={Colors.textSecondary} />
+                  </AccessiblePressable>
+                  <AccessiblePressable 
+                    style={styles.childActionButton}
+                    accessibilityLabel={`Delete ${child.name}'s profile`}
                     onPress={() => handleDeleteChild(child.id, child.name)}
                   >
                     <Trash2 size={16} color={Colors.error} />
-                  </TouchableOpacity>
+                  </AccessiblePressable>
                 </View>
               </View>
             ))}

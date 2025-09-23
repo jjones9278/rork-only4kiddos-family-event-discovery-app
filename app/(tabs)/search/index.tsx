@@ -5,6 +5,7 @@ import { EventCard } from '@/components/EventCard';
 import { BrandedHeader } from '@/components/BrandedHeader';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
+import EmptyState from '@/components/EmptyState';
 import { useEventSearch } from '@/hooks/use-events-trpc';
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/colors';
 
@@ -12,6 +13,50 @@ export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const { data, isLoading, isError, refetch } = useEventSearch(searchQuery);
   const events = data?.items || [];
+
+  // Show empty state when search has no results
+  if (!isLoading && !isError && searchQuery && data && data.items.length === 0) {
+    return (
+      <View style={styles.container}>
+        <BrandedHeader 
+          showNotifications={false}
+          onLocationPress={() => console.log('Location pressed')}
+        />
+        
+        <View style={styles.searchSection}>
+          <Text style={styles.searchTitle}>Find Your Next Adventure</Text>
+          <View style={styles.searchContainer}>
+            <View style={styles.searchBar}>
+              <Search size={20} color={Colors.textSecondary} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search events, activities, locations..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholderTextColor={Colors.textTertiary}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity 
+                  onPress={() => setSearchQuery('')}
+                  style={styles.clearButton}
+                >
+                  <X size={18} color={Colors.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+          <View style={styles.searchAccent} />
+        </View>
+        
+        <EmptyState 
+          title="No events found" 
+          message="Try different keywords or check back later for new events." 
+        />
+      </View>
+    );
+  }
 
   const popularSearches = ['Art Classes', 'Swimming', 'Birthday Parties', 'Music Lessons', 'Sports'];
 

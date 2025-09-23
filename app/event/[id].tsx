@@ -5,6 +5,8 @@ import { Calendar, MapPin, Users, Clock, Heart, Share2, DollarSign, Tag, Accessi
 import { useEventById, useChildren, useToggleFavorite, useCreateBooking } from '@/hooks/use-events-trpc';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
+import EmptyState from '@/components/EmptyState';
+import AccessiblePressable from '@/components/AccessiblePressable';
 import { useToastHelpers } from '@/components/ToastProvider';
 import { ChildAvatar } from '@/components/ChildAvatar';
 import { EventMap } from '@/components/EventMap';
@@ -81,7 +83,8 @@ export default function EventDetailsScreen() {
             <Text style={styles.categoryText}>{event.category.toUpperCase()}</Text>
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity 
+            <AccessiblePressable 
+              accessibilityLabel={event.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
               onPress={() => toggleFavorite.mutate({ eventId: event.id })}
               disabled={toggleFavorite.isPending}
             >
@@ -90,10 +93,12 @@ export default function EventDetailsScreen() {
                 color={event.isFavorite ? '#FF6B6B' : '#9CA3AF'}
                 fill={event.isFavorite ? '#FF6B6B' : 'transparent'}
               />
-            </TouchableOpacity>
-            <TouchableOpacity>
+            </AccessiblePressable>
+            <AccessiblePressable
+              accessibilityLabel="Share event"
+            >
               <Share2 size={24} color="#9CA3AF" />
-            </TouchableOpacity>
+            </AccessiblePressable>
           </View>
         </View>
 
@@ -198,7 +203,12 @@ export default function EventDetailsScreen() {
           </View>
         )}
 
-        {children.length > 0 && (
+        {children.length === 0 ? (
+          <EmptyState 
+            title="No children profiles" 
+            message="Add your children's profiles to book events for them." 
+          />
+        ) : (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Select children to book</Text>
             <View style={styles.childrenList}>

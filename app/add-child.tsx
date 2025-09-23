@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert 
 import { router } from 'expo-router';
 import { X } from 'lucide-react-native';
 import { useCreateChild } from '@/hooks/use-events-trpc';
+import AccessiblePressable from '@/components/AccessiblePressable';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const avatarColors = [
@@ -47,9 +48,12 @@ export default function AddChildScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Add Child</Text>
-        <TouchableOpacity onPress={() => router.back()}>
+        <AccessiblePressable 
+          accessibilityLabel="Close"
+          onPress={() => router.back()}
+        >
           <X size={24} color="#1F2937" />
-        </TouchableOpacity>
+        </AccessiblePressable>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -62,13 +66,14 @@ export default function AddChildScreen() {
           <Text style={styles.avatarLabel}>Choose avatar color</Text>
           <View style={styles.colorPicker}>
             {avatarColors.map((color) => (
-              <TouchableOpacity
+              <AccessiblePressable
                 key={color}
                 style={[
                   styles.colorOption,
                   { backgroundColor: color },
                   selectedColor === color && styles.colorOptionSelected
                 ]}
+                accessibilityLabel={`Select ${color} color`}
                 onPress={() => setSelectedColor(color)}
               />
             ))}
