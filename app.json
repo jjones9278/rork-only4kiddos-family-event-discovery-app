@@ -15,14 +15,22 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.rork.only4kiddos-family-event-discovery"
+      "bundleIdentifier": "app.rork.only4kiddos-family-event-discovery",
+      "config": {
+        "googleMapsApiKey": "GOOGLE_MAPS_IOS_API_KEY"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "app.rork.only4kiddos-family-event-discovery"
+      "package": "app.rork.only4kiddos-family-event-discovery",
+      "config": {
+        "googleMaps": {
+          "apiKey": "GOOGLE_MAPS_ANDROID_API_KEY"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
