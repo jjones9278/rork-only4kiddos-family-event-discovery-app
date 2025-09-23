@@ -19,10 +19,10 @@ const getBaseUrl = () => {
 
 // Create the tRPC client  
 export const trpcClient = createTRPCClient<AppRouter>({
-  transformer: superjson,
   links: [
     httpBatchLink({
       url: `${getBaseUrl()}/trpc`,
+      transformer: superjson,
     }),
   ],
 });
