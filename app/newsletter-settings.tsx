@@ -4,6 +4,7 @@ import { Stack, router } from 'expo-router';
 import { Mail, Bell, Heart, Calendar, Award } from 'lucide-react-native';
 import { NewsletterSubscription } from '@/components/NewsletterSubscription';
 import { BrandedButton } from '@/components/BrandedButton';
+import { AuthGuard } from '@/components/AuthGuard';
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/colors';
 
 interface NotificationPreference {
@@ -69,8 +70,9 @@ export default function NewsletterSettingsScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Email Preferences' }} />
+    <AuthGuard>
+      <View style={styles.container}>
+        <Stack.Screen options={{ title: 'Email Preferences' }} />
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
@@ -156,7 +158,8 @@ export default function NewsletterSettingsScreen() {
           />
         </View>
       </ScrollView>
-    </View>
+      </View>
+    </AuthGuard>
   );
 }
 

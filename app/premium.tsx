@@ -7,6 +7,7 @@ import { useRouter, Stack, router } from 'expo-router';
 import { BrandedButton } from '@/components/BrandedButton';
 import { BrandedHeader } from '@/components/BrandedHeader';
 import { BrandedSpinner } from '@/components/BrandedSpinner';
+import { AuthGuard } from '@/components/AuthGuard';
 
 // Load Stripe (will be configured with environment variable)
 const stripePromise = loadStripe(process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
@@ -137,11 +138,13 @@ export default function Premium() {
   }
 
   return (
-    <View className="flex-1 bg-white">
-      <Stack.Screen options={{ title: 'Premium Subscription' }} />
+    <AuthGuard>
+      <View className="flex-1 bg-white">
+        <Stack.Screen options={{ title: 'Premium Subscription' }} />
       <Elements stripe={stripePromise} options={{ clientSecret }}>
         <SubscribeForm />
       </Elements>
-    </View>
+      </View>
+    </AuthGuard>
   );
 }
