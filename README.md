@@ -255,3 +255,8 @@ Troubleshooting quick checks
 [ ] If lists do not load, confirm EXPO_PUBLIC_API_BASE_URL and backend port
 [ ] If protected calls fail, confirm Authorization header and Firebase Admin env vars
 [ ] If bookings fail, confirm event has sufficient spotsLeft
+
+Acceptance checks
+- README.md ends with the HEALTH CHECKLIST section exactly as defined.
+- No hashtags or asterisks were introduced in that section.
+- Existing README content remains unchanged above the new section.
