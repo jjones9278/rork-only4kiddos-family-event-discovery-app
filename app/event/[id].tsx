@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Calendar, MapPin, Users, Clock, Heart, Share2, DollarSign, Tag, Accessibility } from 'lucide-react-native';
-import { useEventById, useChildrenList, useToggleFavorite, useCreateBooking } from '@/hooks/use-events-trpc';
+import { useEventById, useChildren, useToggleFavorite, useCreateBooking } from '@/hooks/use-events-trpc';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
 import { useToastHelpers } from '@/components/ToastProvider';
@@ -17,7 +17,7 @@ export default function EventDetailsScreen() {
   
   // Use tRPC hooks for data fetching
   const { data: event, isLoading: eventLoading, isError: eventError, refetch: refetchEvent } = useEventById(id as string);
-  const { data: children = [], isLoading: childrenLoading } = useChildrenList();
+  const { data: children = [], isLoading: childrenLoading } = useChildren();
   const toggleFavorite = useToggleFavorite();
   const createBooking = useCreateBooking();
 
@@ -59,7 +59,6 @@ export default function EventDetailsScreen() {
       await createBooking.mutateAsync({
         eventId: event.id,
         childIds: selectedChildren,
-        quantity: selectedChildren.length,
       });
       
       toastSuccess(
@@ -203,7 +202,7 @@ export default function EventDetailsScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Select children to book</Text>
             <View style={styles.childrenList}>
-              {children.map((child) => (
+              {children.map((child: any) => (
                 <TouchableOpacity
                   key={child.id}
                   style={[

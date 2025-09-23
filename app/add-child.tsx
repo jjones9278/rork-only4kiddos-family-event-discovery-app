@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { X } from 'lucide-react-native';
-import { useEvents } from '@/hooks/use-events';
-import { Child } from '@/types/event';
+import { useCreateChild } from '@/hooks/use-events-trpc';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const avatarColors = [
@@ -12,34 +11,36 @@ const avatarColors = [
 ];
 
 export default function AddChildScreen() {
-  const { addChild } = useEvents();
+  const createChild = useCreateChild();
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
   const [interests, setInterests] = useState('');
   const [allergies, setAllergies] = useState('');
   const [selectedColor, setSelectedColor] = useState(avatarColors[0]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!name || !age) {
       Alert.alert('Missing Information', 'Please enter name and age');
       return;
     }
 
-    const child: Child = {
-      id: Date.now().toString(),
-      name,
-      age: parseInt(age),
-      interests: interests ? interests.split(',').map(i => i.trim()) : [],
-      allergies: allergies ? allergies.split(',').map(a => a.trim()) : [],
-      avatarColor: selectedColor,
-    };
+    try {
+      await createChild.mutateAsync({
+        name,
+        age: parseInt(age),
+        interests: interests ? interests.split(',').map(i => i.trim()) : [],
+        allergies: allergies ? allergies.split(',').map(a => a.trim()) : [],
+        avatarColor: selectedColor,
+      });
 
-    addChild(child);
-    Alert.alert(
-      'Child Added!',
-      `${name}'s profile has been created.`,
-      [{ text: 'OK', onPress: () => router.back() }]
-    );
+      Alert.alert(
+        'Child Added!',
+        `${name}'s profile has been created.`,
+        [{ text: 'OK', onPress: () => router.back() }]
+      );
+    } catch (error) {
+      Alert.alert('Error', 'Failed to add child profile. Please try again.');
+    }
   };
 
   return (

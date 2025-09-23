@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Plus, Calendar, Heart, Settings, ChevronRight, Edit2, Trash2, Star, Award, Crown, Mail, LogOut } from 'lucide-react-native';
-import { useChildrenList, useFavoriteEvents, useUpcomingBookings, useDeleteChild } from '@/hooks/use-events-trpc';
+import { useChildren, useFavoriteEvents, useUpcomingBookings, useDeleteChild } from '@/hooks/use-events-trpc';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
 import { useToastHelpers } from '@/components/ToastProvider';
@@ -13,7 +13,7 @@ import { router } from 'expo-router';
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/colors';
 
 export default function ProfileScreen() {
-  const { data: children = [], isLoading: childrenLoading, isError: childrenError, refetch: refetchChildren } = useChildrenList();
+  const { data: children = [], isLoading: childrenLoading, isError: childrenError, refetch: refetchChildren } = useChildren();
   const { data: favoriteEvents = [], isLoading: favoritesLoading } = useFavoriteEvents();
   const { data: upcomingBookings = [], isLoading: bookingsLoading } = useUpcomingBookings();
   const deleteChild = useDeleteChild();
@@ -58,7 +58,7 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteChild.mutateAsync({ childId });
+              await deleteChild.mutateAsync({ id: childId });
               toastSuccess('Profile Deleted', `${childName}'s profile has been removed.`);
             } catch (error) {
               toastError('Delete Failed', 'Unable to delete profile. Please try again.');
@@ -103,7 +103,7 @@ export default function ProfileScreen() {
           </View>
         ) : (
           <View style={styles.childrenGrid}>
-            {children.map((child) => (
+            {children.map((child: any) => (
               <View key={child.id} style={styles.childCard}>
                 <ChildAvatar child={child} size={60} />
                 <Text style={styles.childName}>{child.name}</Text>
@@ -135,7 +135,7 @@ export default function ProfileScreen() {
           </View>
           <View style={[styles.statCard, styles.secondaryStatCard]}>
             <Heart size={24} color={Colors.accentPink} />
-            <Text style={styles.statNumber}>{favorites.length}</Text>
+            <Text style={styles.statNumber}>{favoriteEvents.length}</Text>
             <Text style={styles.statLabel}>Favorites</Text>
           </View>
           <View style={[styles.statCard, styles.accentStatCard]}>

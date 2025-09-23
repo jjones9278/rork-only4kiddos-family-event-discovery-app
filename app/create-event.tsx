@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { Calendar, MapPin, DollarSign, Users, Tag, X, Sparkles } from 'lucide-react-native';
-import { useEvents } from '@/hooks/use-events';
-import { Event, EventCategory } from '@/types/event';
+import { useCreateEvent } from '@/hooks/use-events-trpc';
+import { EventCategory } from '@/types/event';
 import { categories } from '@/mocks/categories';
 import { BrandLogo } from '@/components/BrandLogo';
 import { BrandedButton } from '@/components/BrandedButton';
@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/colors';
 
 export default function CreateEventScreen() {
-  const { addEvent } = useEvents();
+  const createEvent = useCreateEvent();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState('');
@@ -37,42 +37,42 @@ export default function CreateEventScreen() {
     setTags(tags.filter(t => t !== tag));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!title || !description || !date || !time || !location || !address || !capacity || !minAge || !maxAge) {
       Alert.alert('Missing Information', 'Please fill in all required fields');
       return;
     }
 
-    const newEvent: Event = {
-      id: Date.now().toString(),
-      title,
-      description,
-      imageUrl: 'https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=800',
-      date,
-      time,
-      location,
-      address,
-      price: parseFloat(price) || 0,
-      ageRange: {
-        min: parseInt(minAge),
-        max: parseInt(maxAge),
-      },
-      category: selectedCategory,
-      hostName: 'You',
-      hostImage: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=200',
-      capacity: parseInt(capacity),
-      spotsLeft: parseInt(capacity),
-      tags,
-      accessibilityFeatures: [],
-      isFavorite: false,
-    };
+    try {
+      await createEvent.mutateAsync({
+        title,
+        description,
+        imageUrl: 'https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=800',
+        date,
+        time,
+        location,
+        address,
+        price: parseFloat(price) || 0,
+        ageRange: {
+          min: parseInt(minAge),
+          max: parseInt(maxAge),
+        },
+        category: selectedCategory,
+        hostName: 'You',
+        hostImage: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=200',
+        capacity: parseInt(capacity),
+        tags,
+        accessibilityFeatures: [],
+      });
 
-    addEvent(newEvent);
-    Alert.alert(
-      'Event Created!',
-      'Your event has been successfully created.',
-      [{ text: 'OK', onPress: () => router.back() }]
-    );
+      Alert.alert(
+        'Event Created!',
+        'Your event has been successfully created.',
+        [{ text: 'OK', onPress: () => router.back() }]
+      );
+    } catch (error) {
+      Alert.alert('Error', 'Failed to create event. Please try again.');
+    }
   };
 
   return (
