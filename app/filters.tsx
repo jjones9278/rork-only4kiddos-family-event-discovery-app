@@ -2,24 +2,20 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { X, DollarSign } from 'lucide-react-native';
-import { useEvents } from '@/hooks/use-events';
 import { EventCategory } from '@/types/event';
 import { categories } from '@/mocks/categories';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
 
 export default function FiltersScreen() {
-  const { filters, setFilters } = useEvents();
-  const [selectedCategories, setSelectedCategories] = useState<EventCategory[]>(filters.categories || []);
-  const [ageRange, setAgeRange] = useState(filters.ageRange || { min: 0, max: 18 });
-  const [priceRange, setPriceRange] = useState(filters.priceRange || { min: 0, max: 100 });
+  // Filters are now handled in parent components
+  const [selectedCategories, setSelectedCategories] = useState<EventCategory[]>([]);
+  const [ageRange, setAgeRange] = useState({ min: 0, max: 18 });
+  const [priceRange, setPriceRange] = useState({ min: 0, max: 100 });
 
   const handleApply = () => {
-    setFilters({
-      categories: selectedCategories.length > 0 ? selectedCategories : undefined,
-      ageRange,
-      priceRange,
-    });
+    // Note: Filters are now managed per component
+    // This screen could be enhanced to pass filters back to parent
     router.back();
   };
 
@@ -27,7 +23,6 @@ export default function FiltersScreen() {
     setSelectedCategories([]);
     setAgeRange({ min: 0, max: 18 });
     setPriceRange({ min: 0, max: 100 });
-    setFilters({});
   };
 
   const toggleCategory = (category: EventCategory) => {

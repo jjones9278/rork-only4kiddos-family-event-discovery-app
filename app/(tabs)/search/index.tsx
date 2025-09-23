@@ -3,12 +3,15 @@ import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity } from 'r
 import { Search, X, Sparkles, TrendingUp } from 'lucide-react-native';
 import { EventCard } from '@/components/EventCard';
 import { BrandedHeader } from '@/components/BrandedHeader';
-import { useFilteredEvents } from '@/hooks/use-events';
+import { LoadingState } from '@/components/LoadingState';
+import { ErrorState } from '@/components/ErrorState';
+import { useEventSearch } from '@/hooks/use-events-trpc';
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/colors';
 
 export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState('');
-  const filteredEvents = useFilteredEvents(searchQuery);
+  const { data, isLoading, isError, refetch } = useEventSearch(searchQuery);
+  const events = data?.items || [];
 
   const popularSearches = ['Art Classes', 'Swimming', 'Birthday Parties', 'Music Lessons', 'Sports'];
 
@@ -82,14 +85,20 @@ export default function SearchScreen() {
         <View style={styles.searchAccent} />
       </View>
 
-      <FlatList
-        data={filteredEvents}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <EventCard event={item} />}
-        ListEmptyComponent={ListEmpty}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
+      {isLoading && searchQuery && events.length === 0 ? (
+        <LoadingState label="Searching events..." />
+      ) : isError ? (
+        <ErrorState message="Unable to search events. Please try again." onRetry={refetch} />
+      ) : (
+        <FlatList
+          data={events}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <EventCard event={item} />}
+          ListEmptyComponent={ListEmpty}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </View>
   );
 }

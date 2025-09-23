@@ -2,24 +2,33 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Calendar, MapPin, Users, Clock, Heart, Share2, DollarSign, Tag, Accessibility } from 'lucide-react-native';
-import { useEvents } from '@/hooks/use-events';
+import { useEventById, useChildrenList, useToggleFavorite, useCreateBooking } from '@/hooks/use-events-trpc';
+import { LoadingState } from '@/components/LoadingState';
+import { ErrorState } from '@/components/ErrorState';
+import { useToastHelpers } from '@/components/ToastProvider';
 import { ChildAvatar } from '@/components/ChildAvatar';
 import { EventMap } from '@/components/EventMap';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function EventDetailsScreen() {
   const { id } = useLocalSearchParams();
-  const { allEvents, children, toggleFavorite, createBooking } = useEvents();
   const [selectedChildren, setSelectedChildren] = useState<string[]>([]);
+  const { toastSuccess, toastError } = useToastHelpers();
   
-  const event = allEvents.find(e => e.id === id);
+  // Use tRPC hooks for data fetching
+  const { data: event, isLoading: eventLoading, isError: eventError, refetch: refetchEvent } = useEventById(id as string);
+  const { data: children = [], isLoading: childrenLoading } = useChildrenList();
+  const toggleFavorite = useToggleFavorite();
+  const createBooking = useCreateBooking();
 
-  if (!event) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Event not found</Text>
-      </View>
-    );
+  // Show loading state
+  if (eventLoading) {
+    return <LoadingState label="Loading event details..." />;
+  }
+
+  // Show error state
+  if (eventError || !event) {
+    return <ErrorState message="Event not found or unable to load details." onRetry={refetchEvent} />;
   }
 
   const formatDate = (dateStr: string) => {
@@ -40,27 +49,27 @@ export default function EventDetailsScreen() {
     );
   };
 
-  const handleBooking = () => {
+  const handleBooking = async () => {
     if (selectedChildren.length === 0) {
       Alert.alert('Select Children', 'Please select at least one child for this event');
       return;
     }
 
-    const booking = {
-      id: Date.now().toString(),
-      eventId: event.id,
-      childIds: selectedChildren,
-      status: 'confirmed' as const,
-      bookingDate: new Date().toISOString(),
-      totalAmount: event.price * selectedChildren.length,
-    };
-
-    createBooking(booking);
-    Alert.alert(
-      'Booking Confirmed!',
-      `You've successfully booked ${event.title} for ${selectedChildren.length} child${selectedChildren.length > 1 ? 'ren' : ''}.`,
-      [{ text: 'OK', onPress: () => router.back() }]
-    );
+    try {
+      await createBooking.mutateAsync({
+        eventId: event.id,
+        childIds: selectedChildren,
+        quantity: selectedChildren.length,
+      });
+      
+      toastSuccess(
+        'Booking Confirmed!',
+        `Successfully booked ${event.title} for ${selectedChildren.length} child${selectedChildren.length > 1 ? 'ren' : ''}.`
+      );
+      router.back();
+    } catch (error) {
+      toastError('Booking Failed', 'Unable to complete booking. Please try again.');
+    }
   };
 
   return (
@@ -73,7 +82,10 @@ export default function EventDetailsScreen() {
             <Text style={styles.categoryText}>{event.category.toUpperCase()}</Text>
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity onPress={() => toggleFavorite(event.id)}>
+            <TouchableOpacity 
+              onPress={() => toggleFavorite.mutate({ eventId: event.id })}
+              disabled={toggleFavorite.isPending}
+            >
               <Heart 
                 size={24} 
                 color={event.isFavorite ? '#FF6B6B' : '#9CA3AF'}
@@ -223,13 +235,18 @@ export default function EventDetailsScreen() {
           <TouchableOpacity 
             style={[
               styles.bookButton,
-              event.spotsLeft === 0 && styles.bookButtonDisabled
+              (event.spotsLeft === 0 || createBooking.isPending) && styles.bookButtonDisabled
             ]}
             onPress={handleBooking}
-            disabled={event.spotsLeft === 0}
+            disabled={event.spotsLeft === 0 || createBooking.isPending}
           >
             <Text style={styles.bookButtonText}>
-              {event.spotsLeft === 0 ? 'Fully Booked' : 'Book Now'}
+              {createBooking.isPending 
+                ? 'Booking...' 
+                : event.spotsLeft === 0 
+                  ? 'Fully Booked' 
+                  : 'Book Now'
+              }
             </Text>
           </TouchableOpacity>
         </View>

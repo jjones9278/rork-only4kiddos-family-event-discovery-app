@@ -1,7 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Plus, Calendar, Heart, Settings, ChevronRight, Edit2, Trash2, Star, Award, Crown, Mail, LogOut } from 'lucide-react-native';
-import { useEvents, useUpcomingBookings } from '@/hooks/use-events';
+import { useChildrenList, useFavoriteEvents, useUpcomingBookings, useDeleteChild } from '@/hooks/use-events-trpc';
+import { LoadingState } from '@/components/LoadingState';
+import { ErrorState } from '@/components/ErrorState';
+import { useToastHelpers } from '@/components/ToastProvider';
 import { ChildAvatar } from '@/components/ChildAvatar';
 import { BrandLogo } from '@/components/BrandLogo';
 import { AuthGuard } from '@/components/AuthGuard';
@@ -10,9 +13,17 @@ import { router } from 'expo-router';
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/colors';
 
 export default function ProfileScreen() {
-  const { children, favorites, deleteChild } = useEvents();
-  const upcomingBookings = useUpcomingBookings();
+  const { data: children = [], isLoading: childrenLoading, isError: childrenError, refetch: refetchChildren } = useChildrenList();
+  const { data: favoriteEvents = [], isLoading: favoritesLoading } = useFavoriteEvents();
+  const { data: upcomingBookings = [], isLoading: bookingsLoading } = useUpcomingBookings();
+  const deleteChild = useDeleteChild();
   const { user, signOut } = useAuth();
+  const { toastSuccess, toastError } = useToastHelpers();
+
+  // Show loading for initial data
+  if (childrenLoading && children.length === 0) {
+    return <LoadingState label="Loading your profile..." />;
+  }
 
   const handleSignOut = async () => {
     Alert.alert(
@@ -45,7 +56,14 @@ export default function ProfileScreen() {
         { 
           text: 'Delete', 
           style: 'destructive',
-          onPress: () => deleteChild(childId)
+          onPress: async () => {
+            try {
+              await deleteChild.mutateAsync({ childId });
+              toastSuccess('Profile Deleted', `${childName}'s profile has been removed.`);
+            } catch (error) {
+              toastError('Delete Failed', 'Unable to delete profile. Please try again.');
+            }
+          }
         },
       ]
     );

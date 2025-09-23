@@ -5,15 +5,27 @@ import { EventCard } from '@/components/EventCard';
 import { CategoryFilter } from '@/components/CategoryFilter';
 import { BrandedHeader } from '@/components/BrandedHeader';
 import { NewsletterSubscription } from '@/components/NewsletterSubscription';
-import { useEvents } from '@/hooks/use-events';
+import { LoadingState } from '@/components/LoadingState';
+import { ErrorState } from '@/components/ErrorState';
+import { useEventList } from '@/hooks/use-events-trpc';
+import { useToastHelpers } from '@/components/ToastProvider';
 import { EventCategory } from '@/types/event';
 import { router } from 'expo-router';
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/colors';
 
 export default function HomeScreen() {
-  const { events, filters, setFilters, isLoading } = useEvents();
-  const [refreshing, setRefreshing] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<EventCategory[]>([]);
+  const { toastSuccess, toastError } = useToastHelpers();
+  
+  // Use tRPC hook for events with current filters
+  const filters = {
+    categories: selectedCategories.length > 0 ? selectedCategories : undefined,
+    limit: 20,
+    offset: 0,
+  };
+  
+  const { data, isLoading, isError, refetch } = useEventList(filters);
+  const events = data?.items || [];
 
   const handleCategoryToggle = (category: EventCategory) => {
     const updated = selectedCategories.includes(category)
@@ -21,13 +33,16 @@ export default function HomeScreen() {
       : [...selectedCategories, category];
     
     setSelectedCategories(updated);
-    setFilters({ ...filters, categories: updated.length > 0 ? updated : undefined });
   };
 
-  const onRefresh = React.useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1500);
-  }, []);
+  const onRefresh = React.useCallback(async () => {
+    try {
+      await refetch();
+      toastSuccess('Events refreshed!');
+    } catch (error) {
+      toastError('Failed to refresh', 'Please check your connection and try again.');
+    }
+  }, [refetch, toastSuccess, toastError]);
 
   const ListHeader = () => (
     <View>
@@ -80,6 +95,16 @@ export default function HomeScreen() {
     </View>
   );
 
+  // Show loading state
+  if (isLoading && events.length === 0) {
+    return <LoadingState label="Loading amazing family events..." />;
+  }
+
+  // Show error state
+  if (isError) {
+    return <ErrorState message="Unable to load events. Please check your connection." onRetry={refetch} />;
+  }
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -92,7 +117,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
+            refreshing={isLoading}
             onRefresh={onRefresh}
             tintColor={Colors.primary}
             colors={[Colors.primary, Colors.secondary]}

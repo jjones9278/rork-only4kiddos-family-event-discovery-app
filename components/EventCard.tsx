@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Heart, MapPin, Calendar, Users, Navigation } from 'lucide-react-native';
 import { Event } from '@/types/event';
-import { useEvents } from '@/hooks/use-events';
+import { useToggleFavorite } from '@/hooks/use-events-trpc';
 import { router } from 'expo-router';
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/colors';
 
@@ -12,7 +12,7 @@ interface EventCardProps {
 }
 
 export function EventCard({ event, onPress }: EventCardProps) {
-  const { toggleFavorite } = useEvents();
+  const toggleFavorite = useToggleFavorite();
 
   const handlePress = () => {
     if (onPress) {
@@ -35,8 +35,9 @@ export function EventCard({ event, onPress }: EventCardProps) {
           style={styles.favoriteButton} 
           onPress={(e) => {
             e.stopPropagation();
-            toggleFavorite(event.id);
+            toggleFavorite.mutate({ eventId: event.id });
           }}
+          disabled={toggleFavorite.isPending}
         >
           <Heart 
             size={20} 
