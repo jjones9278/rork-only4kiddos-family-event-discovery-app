@@ -7,7 +7,7 @@ export interface Context {
   req: Request;
 }
 
-export async function createContext({ req }: FetchCreateContextFnOptions): Promise<Context> {
+export async function createContext({ req }: FetchCreateContextFnOptions): Promise<Record<string, unknown>> {
   // Extract Authorization header
   const authHeader = req.headers.get('Authorization') || undefined;
   

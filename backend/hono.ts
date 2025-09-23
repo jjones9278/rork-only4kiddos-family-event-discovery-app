@@ -16,10 +16,22 @@ const app = new Hono();
 app.use('*', logger());
 app.use('*', rateLimit());
 
-// Add body size limit (1MB)
+// Add body size limit (1MB) - robust enforcement
 app.use('*', async (c, next) => {
-  const len = Number(c.req.header('content-length') || '0');
-  if (len > 1_000_000) return c.text('Payload too large', 413);
+  const contentLength = c.req.header('content-length');
+  const maxSize = 1_000_000; // 1MB limit
+  
+  // Reject if Content-Length exceeds limit
+  if (contentLength && Number(contentLength) > maxSize) {
+    return c.text('Payload too large', 413);
+  }
+  
+  // Require Content-Length for body-containing methods to prevent bypass
+  const method = c.req.method;
+  if (['POST', 'PUT', 'PATCH'].includes(method) && !contentLength) {
+    return c.json({ error: 'Content-Length header required' }, 400);
+  }
+  
   await next();
 });
 
