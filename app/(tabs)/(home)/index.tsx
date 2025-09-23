@@ -4,6 +4,7 @@ import { SlidersHorizontal, Sparkles, Heart } from 'lucide-react-native';
 import { EventCard } from '@/components/EventCard';
 import { CategoryFilter } from '@/components/CategoryFilter';
 import { BrandedHeader } from '@/components/BrandedHeader';
+import { NewsletterSubscription } from '@/components/NewsletterSubscription';
 import { useEvents } from '@/hooks/use-events';
 import { EventCategory } from '@/types/event';
 import { router } from 'expo-router';
@@ -43,6 +44,14 @@ export default function HomeScreen() {
         <Text style={styles.welcomeSubtext}>for your little ones</Text>
         <View style={styles.brandAccent} />
       </View>
+
+      <NewsletterSubscription
+        title="Never Miss Family Fun!"
+        description="Get weekly updates on the best family events in your area"
+        subscriptionType="family_events"
+        onSuccess={(email) => console.log('Subscribed:', email)}
+        onError={(error) => console.log('Subscription error:', error)}
+      />
 
       <View style={styles.filterSection}>
         <View style={styles.filterHeader}>
