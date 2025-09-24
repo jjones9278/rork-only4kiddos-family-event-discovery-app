@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -6,6 +6,8 @@ import { X, Bell, BellRing, TestTube, Settings } from 'lucide-react-native';
 import { useNotificationContext } from '@/context/NotificationContext';
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/colors';
 import AccessiblePressable from '@/components/AccessiblePressable';
+import { trpc } from '@/lib/trpc';
+import { useAuth } from '@/context/AuthContext';
 
 export default function NotificationsScreen() {
   const {
@@ -17,9 +19,35 @@ export default function NotificationsScreen() {
     isLoading
   } = useNotificationContext();
 
+  const { user } = useAuth();
+  
+  // Backend preferences queries
+  const preferencesQuery = trpc.notifications.getPreferences.useQuery(undefined, {
+    enabled: !!user,
+  });
+  
+  const updatePreferencesMutation = trpc.notifications.updatePreferences.useMutation({
+    onSuccess: () => {
+      preferencesQuery.refetch();
+    },
+    onError: (error) => {
+      Alert.alert('Error', 'Failed to update notification preferences. Please try again.');
+    },
+  });
+
+  // Local state for preferences
   const [eventNotifications, setEventNotifications] = useState(true);
   const [bookingReminders, setBookingReminders] = useState(true);
   const [newsUpdates, setNewsUpdates] = useState(false);
+
+  // Sync with backend preferences when loaded
+  useEffect(() => {
+    if (preferencesQuery.data) {
+      setEventNotifications(preferencesQuery.data.eventNotifications);
+      setBookingReminders(preferencesQuery.data.bookingReminders);
+      setNewsUpdates(preferencesQuery.data.newsUpdates);
+    }
+  }, [preferencesQuery.data]);
 
   const handleRequestPermissions = async () => {
     const granted = await requestPermissions();
@@ -121,9 +149,15 @@ export default function NotificationsScreen() {
             <Text style={styles.preferenceLabel}>New Events</Text>
             <Switch
               value={eventNotifications}
-              onValueChange={setEventNotifications}
+              onValueChange={(value) => {
+                setEventNotifications(value);
+                if (user) {
+                  updatePreferencesMutation.mutate({ eventNotifications: value });
+                }
+              }}
               trackColor={{ false: Colors.border, true: Colors.primary }}
               thumbColor={eventNotifications ? Colors.textOnPrimary : Colors.textSecondary}
+              disabled={updatePreferencesMutation.isLoading || !user}
             />
           </View>
 
@@ -131,9 +165,15 @@ export default function NotificationsScreen() {
             <Text style={styles.preferenceLabel}>Booking Reminders</Text>
             <Switch
               value={bookingReminders}
-              onValueChange={setBookingReminders}
+              onValueChange={(value) => {
+                setBookingReminders(value);
+                if (user) {
+                  updatePreferencesMutation.mutate({ bookingReminders: value });
+                }
+              }}
               trackColor={{ false: Colors.border, true: Colors.primary }}
               thumbColor={bookingReminders ? Colors.textOnPrimary : Colors.textSecondary}
+              disabled={updatePreferencesMutation.isLoading || !user}
             />
           </View>
 
@@ -141,11 +181,23 @@ export default function NotificationsScreen() {
             <Text style={styles.preferenceLabel}>News & Updates</Text>
             <Switch
               value={newsUpdates}
-              onValueChange={setNewsUpdates}
+              onValueChange={(value) => {
+                setNewsUpdates(value);
+                if (user) {
+                  updatePreferencesMutation.mutate({ newsUpdates: value });
+                }
+              }}
               trackColor={{ false: Colors.border, true: Colors.primary }}
               thumbColor={newsUpdates ? Colors.textOnPrimary : Colors.textSecondary}
+              disabled={updatePreferencesMutation.isLoading || !user}
             />
           </View>
+
+          {!user && (
+            <View style={styles.loginPrompt}>
+              <Text style={styles.loginPromptText}>Sign in to sync your notification preferences across devices</Text>
+            </View>
+          )}
         </View>
 
         {/* Actions */}
@@ -346,5 +398,19 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     lineHeight: 20,
     marginBottom: Spacing.sm,
+  },
+  loginPrompt: {
+    backgroundColor: Colors.backgroundSecondary,
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.md,
+    marginTop: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  loginPromptText: {
+    ...Typography.body2,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });

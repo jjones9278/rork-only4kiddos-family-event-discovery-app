@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, ReactNode } from 'react';
 import { useNotifications, UseNotificationsReturn } from '@/hooks/use-notifications';
 import { useAuth } from '@/context/AuthContext';
 import { useToastHelpers } from '@/components/ToastProvider';
+import { trpc } from '@/lib/trpc';
 
 interface NotificationContextType extends UseNotificationsReturn {
   sendTestNotification: () => Promise<void>;
@@ -19,33 +20,64 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const { user } = useAuth();
   const { toastSuccess, toastError } = useToastHelpers();
 
-  // Send a test notification
+  // Send a test notification via backend
+  const testNotificationMutation = trpc.notifications.sendTest.useMutation({
+    onSuccess: (result) => {
+      if (result.success) {
+        toastSuccess(result.message);
+      } else {
+        toastError(result.message);
+      }
+    },
+    onError: (error) => {
+      toastError('Failed to send test notification');
+      console.error('Test notification error:', error);
+    },
+  });
+
   const sendTestNotification = async () => {
     try {
-      await notifications.schedulePushNotification(
-        '🎉 Only4Kiddos',
-        'Push notifications are now active! You\'ll receive updates about new events, bookings, and more.',
-        { type: 'test', timestamp: Date.now() }
-      );
-      toastSuccess('Test notification sent!');
+      // Try backend notification first (if user is authenticated)
+      if (user) {
+        await testNotificationMutation.mutateAsync({
+          title: '🎉 Only4Kiddos',
+          body: 'Push notifications are now active! You\'ll receive updates about new events, bookings, and more.',
+        });
+      } else {
+        // Fallback to local notification
+        await notifications.schedulePushNotification(
+          '🎉 Only4Kiddos',
+          'Push notifications are now active! You\'ll receive updates about new events, bookings, and more.',
+          { type: 'test', timestamp: Date.now() }
+        );
+        toastSuccess('Test notification sent!');
+      }
     } catch (error) {
       toastError('Failed to send test notification');
     }
   };
 
-  // Register push token with backend (placeholder for future implementation)
+  // Register push token with backend
+  const registerTokenMutation = trpc.notifications.registerToken.useMutation({
+    onSuccess: () => {
+      console.log('Push token registered successfully');
+    },
+    onError: (error) => {
+      console.error('Failed to register push token:', error);
+      toastError('Failed to register for notifications');
+    },
+  });
+
   const registerPushToken = async () => {
     if (!notifications.expoPushToken || !user) {
       return;
     }
 
     try {
-      // TODO: Implement API call to register token with backend
-      // await trpc.notifications.registerToken.mutate({
-      //   token: notifications.expoPushToken,
-      //   userId: user.uid,
-      // });
-      console.log('Push token registered:', notifications.expoPushToken);
+      await registerTokenMutation.mutateAsync({
+        token: notifications.expoPushToken,
+        platform: 'web', // Default to web for Expo web
+      });
     } catch (error) {
       console.error('Failed to register push token:', error);
     }

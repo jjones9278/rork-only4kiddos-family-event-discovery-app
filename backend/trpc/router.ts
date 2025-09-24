@@ -1,6 +1,7 @@
 // Main tRPC router for Only4kiddos backend
 import { router, publicProcedure, protectedProcedure, hostProcedure } from './procedures';
 import { mailerLiteService } from '../services/mailerlite';
+import { notificationService } from '../services/notifications';
 import { eventStore, childStore, bookingStore, favoritesStore } from '../store/data';
 import {
   FilterInputSchema,
@@ -371,6 +372,148 @@ const mailerLiteRouter = router({
     }),
 });
 
+// Notifications router
+const notificationsRouter = router({
+  // Register push token
+  registerToken: protectedProcedure
+    .input(z.object({
+      token: z.string(),
+      platform: z.enum(['ios', 'android', 'web']),
+    }))
+    .output(z.object({ success: z.boolean() }))
+    .mutation(async ({ input, ctx }) => {
+      await notificationService.registerPushToken(ctx.auth.userId, input.token, input.platform);
+      return { success: true };
+    }),
+
+  // Remove push token
+  removeToken: protectedProcedure
+    .input(z.object({
+      token: z.string(),
+    }))
+    .output(z.object({ success: z.boolean() }))
+    .mutation(async ({ input, ctx }) => {
+      await notificationService.removePushToken(ctx.auth.userId, input.token);
+      return { success: true };
+    }),
+
+  // Get notification preferences
+  getPreferences: protectedProcedure
+    .output(z.object({
+      eventNotifications: z.boolean(),
+      bookingReminders: z.boolean(),
+      newsUpdates: z.boolean(),
+    }))
+    .query(async ({ ctx }) => {
+      const preferences = await notificationService.getNotificationPreferences(ctx.auth.userId);
+      return {
+        eventNotifications: preferences.eventNotifications,
+        bookingReminders: preferences.bookingReminders,
+        newsUpdates: preferences.newsUpdates,
+      };
+    }),
+
+  // Update notification preferences
+  updatePreferences: protectedProcedure
+    .input(z.object({
+      eventNotifications: z.boolean().optional(),
+      bookingReminders: z.boolean().optional(),
+      newsUpdates: z.boolean().optional(),
+    }))
+    .output(z.object({
+      eventNotifications: z.boolean(),
+      bookingReminders: z.boolean(),
+      newsUpdates: z.boolean(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const preferences = await notificationService.updateNotificationPreferences(ctx.auth.userId, input);
+      return {
+        eventNotifications: preferences.eventNotifications,
+        bookingReminders: preferences.bookingReminders,
+        newsUpdates: preferences.newsUpdates,
+      };
+    }),
+
+  // Send test notification (for testing purposes)
+  sendTest: protectedProcedure
+    .input(z.object({
+      title: z.string(),
+      body: z.string(),
+    }))
+    .output(z.object({ 
+      success: z.boolean(),
+      message: z.string(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const result = await notificationService.sendPushNotification({
+          userIds: [ctx.auth.userId],
+          title: input.title,
+          body: input.body,
+          data: { type: 'test' },
+          sound: 'default',
+          priority: 'normal',
+        });
+
+        return {
+          success: result.success,
+          message: result.success ? 'Test notification sent!' : 'Failed to send notification',
+        };
+      } catch (error) {
+        return {
+          success: false,
+          message: error instanceof Error ? error.message : 'Unknown error occurred',
+        };
+      }
+    }),
+
+  // Send notification to all users (host only)
+  sendToAll: hostProcedure
+    .input(z.object({
+      title: z.string(),
+      body: z.string(),
+      type: z.enum(['event', 'news', 'announcement']).default('announcement'),
+    }))
+    .output(z.object({ 
+      success: z.boolean(),
+      recipientCount: z.number(),
+      message: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      try {
+        if (input.type === 'news') {
+          await notificationService.sendNewsNotification(input.title, input.body);
+          return {
+            success: true,
+            recipientCount: 0, // Would be actual count in real implementation
+            message: 'News notification sent to opted-in users',
+          };
+        } else {
+          // For other types, send to all users (in a real app, you'd get all user IDs)
+          const result = await notificationService.sendPushNotification({
+            title: input.title,
+            body: input.body,
+            data: { type: input.type },
+            sound: 'default',
+            priority: input.type === 'event' ? 'high' : 'normal',
+          });
+
+          return {
+            success: result.success,
+            recipientCount: result.results.length,
+            message: result.success ? 'Notification sent successfully' : 'Failed to send notification',
+          };
+        }
+      } catch (error) {
+        return {
+          success: false,
+          recipientCount: 0,
+          message: error instanceof Error ? error.message : 'Unknown error occurred',
+        };
+      }
+    }),
+});
+
 // Main app router
 export const appRouter = router({
   events: eventsRouter,
@@ -378,6 +521,7 @@ export const appRouter = router({
   children: childrenRouter,
   bookings: bookingsRouter,
   mailerlite: mailerLiteRouter,
+  notifications: notificationsRouter,
 
   // Health check
   health: publicProcedure
