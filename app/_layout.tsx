@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 // MailerLite is now handled by the backend - no client initialization needed
 import { AuthProvider } from "@/context/AuthContext";
 import { ToastProvider } from "@/components/ToastProvider";
+import { NotificationProvider } from "@/context/NotificationContext";
 import { trpc, trpcClient } from "@/lib/trpc";
 
 SplashScreen.preventAutoHideAsync();
@@ -79,6 +80,13 @@ function RootLayoutNav() {
           presentation: "modal",
         }} 
       />
+      <Stack.Screen 
+        name="notifications" 
+        options={{ 
+          title: "Notifications",
+          presentation: "modal",
+        }} 
+      />
     </Stack>
   );
 }
@@ -93,11 +101,13 @@ export default function RootLayout() {
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <ToastProvider>
-            <GestureHandlerRootView>
-              <RootLayoutNav />
-            </GestureHandlerRootView>
-          </ToastProvider>
+          <NotificationProvider>
+            <ToastProvider>
+              <GestureHandlerRootView>
+                <RootLayoutNav />
+              </GestureHandlerRootView>
+            </ToastProvider>
+          </NotificationProvider>
         </AuthProvider>
       </QueryClientProvider>
     </trpc.Provider>

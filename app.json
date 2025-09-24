@@ -18,7 +18,8 @@
       "bundleIdentifier": "com.only4kiddos.app",
       "buildNumber": "1",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "We show relevant events near you."
+        "NSLocationWhenInUseUsageDescription": "We show relevant events near you.",
+        "UIBackgroundModes": ["background-fetch", "remote-notification"]
       },
       "config": {
         "googleMapsApiKey": "GOOGLE_MAPS_IOS_API_KEY"
@@ -41,8 +42,19 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#7C3AED"
+        }
+      ]
     ],
+    "notification": {
+      "icon": "./assets/images/notification-icon.png",
+      "color": "#7C3AED"
+    },
     "experiments": {
       "typedRoutes": true
     },

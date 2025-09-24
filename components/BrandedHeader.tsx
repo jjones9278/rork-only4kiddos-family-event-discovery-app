@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MapPin, Bell } from 'lucide-react-native';
+import { router } from 'expo-router';
 import { BrandLogo } from './BrandLogo';
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/colors';
 
@@ -25,7 +26,7 @@ export function BrandedHeader({
           {showNotifications && (
             <TouchableOpacity 
               style={styles.notificationButton}
-              onPress={onNotificationPress}
+              onPress={onNotificationPress || (() => router.push('/notifications'))}
             >
               <Bell size={20} color={Colors.textSecondary} />
               <View style={styles.notificationBadge} />
