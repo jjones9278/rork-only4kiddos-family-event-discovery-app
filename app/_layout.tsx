@@ -101,13 +101,13 @@ export default function RootLayout() {
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <NotificationProvider>
-            <ToastProvider>
+          <ToastProvider>
+            <NotificationProvider>
               <GestureHandlerRootView>
                 <RootLayoutNav />
               </GestureHandlerRootView>
-            </ToastProvider>
-          </NotificationProvider>
+            </NotificationProvider>
+          </ToastProvider>
         </AuthProvider>
       </QueryClientProvider>
     </trpc.Provider>
