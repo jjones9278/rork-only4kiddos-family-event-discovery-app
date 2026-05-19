@@ -1,0 +1,140 @@
+You are editing an Expo React Native app with Expo Router and a tiny Bun + Hono backend in this repo:
+rork-only4kiddos-family-event-discovery-app
+Key folders and files:
+app/
+backend/
+hooks/
+services/
+types/
+constants/
+package.json
+tsconfig.json
+eslint.config.js
+.replit
+
+Goal
+
+Move all MailerLite calls to the backend so no API keys are exposed on the client
+
+Add a typed tRPC API in the Hono backend for events, favorites, bookings, and children
+
+Verify Firebase Auth tokens in backend middleware for protected routes
+
+Replace client mock data with TanStack Query + tRPC calls
+
+Add shared zod schemas for inputs and outputs
+
+Add basic loading and error states, and a single toast utility
+
+Add .env.example and update README with setup steps
+
+Do the following changes
+
+Environment and configuration
+a) Create .env.example at repo root with these keys
+EXPO_PUBLIC_API_BASE_URL=http://localhost:8787
+
+FIREBASE_PROJECT_ID=
+FIREBASE_API_KEY=
+MAILERLITE_API_KEY=server_only
+b) Ensure .gitignore includes .env and .env.* but keeps .env.example tracked
+c) In backend runtime, read MAILERLITE_API_KEY from process.env only. Never read it on the client
+
+Backend: Hono + tRPC
+a) In backend/ create or update server entry (for Bun) to mount Hono and tRPC
+Example files
+backend/server.ts
+backend/trpc/router.ts
+backend/trpc/context.ts
+backend/trpc/procedures.ts
+backend/middleware/auth.ts
+b) Add auth middleware
+Verify Firebase ID tokens from Authorization: Bearer <token>
+On success, attach userId and optional role claims to ctx
+On failure, return 401
+c) Define shared zod schemas in types/schemas.ts
+EventSchema, CreateEventInput
+BookingSchema, CreateBookingInput
+ChildSchema, CreateChildInput
+FavoriteToggleInput
+FilterInput for list queries
+d) Implement tRPC routers with zod validation
+events.list(filters) returns paginated events
+events.byId(id)
+events.create(input) protected for hosts
+favorites.toggle(eventId) protected
+bookings.create({ eventId, childIds, qty }) protected
+children.list() protected
+children.create(input) protected
+e) Add a mailerlite.subscribe mutation on the server that uses MAILERLITE_API_KEY and never exposes the key to clients
+f) Add simple in-memory or file-backed data for now if no database is configured. Create a data store module and centralize reads and writes so it is easy to swap in a real DB later
+
+CORS and security
+a) Restrict CORS in production to known origins. For local dev allow http://localhost
+:* and Expo dev origins
+b) Rate limit public endpoints if feasible. If not, add a TODO with a clear hook to plug a limiter later
+
+Client: tRPC client and queries
+a) In lib/trpc.ts configure a tRPC client that points to EXPO_PUBLIC_API_BASE_URL with fetch links and attaches Firebase Bearer token when available
+b) In hooks/use-events.ts remove mockEvents as the source of truth
+Use TanStack Query + tRPC to implement
+useEventList(filters)
+useEventById(id)
+useToggleFavorite(eventId)
+useCreateBooking(payload)
+useChildrenList and useCreateChild
+Persist minimal cache keys in QueryClient only. Remove AsyncStorage as the primary store. If you need offline cache, keep it behind a single storage adapter with clear get and set methods
+c) Replace direct MailerLite calls with a call to trpc.mailerlite.subscribe
+
+Screens and components
+a) Update screens that list or show events to use the hooks above
+b) Add consistent loading, empty, and error states:
+LoadingState: spinner + label
+EmptyState: title + body + optional call to action
+ErrorState: message + retry button that calls queryClient.invalidateQueries or re-runs the mutation
+c) Create a simple toast utility (context + hook) and use it for mutation success and error messages
+d) Verify all touch targets are at least 44 px and add accessibilityLabel to interactive elements
+
+Lint, scripts, and CI
+a) Add Prettier and integrate with ESLint if missing. Add scripts
+"format": "prettier --write ."
+"typecheck": "tsc --noEmit"
+"lint": "eslint ."
+b) Add a script "dev:all" that starts Expo and Bun backend in parallel
+c) Optional GitHub Action to run typecheck and lint on push
+
+Documentation
+a) Update README with
+Environment variables and what they do
+How to run backend and app locally
+How auth works end to end
+Where to add new tRPC routes and how to extend schemas
+
+Acceptance criteria
+
+No MailerLite calls remain on the client. The only place that uses MAILERLITE_API_KEY is the server. Searching the repo for MAILERLITE_API_KEY returns only backend files
+
+Client event list and event detail screens render from tRPC data, not mockEvents
+
+Creating a booking hits bookings.create and shows loading and error states, and a success toast
+
+favorites.toggle persists per user and reflects immediately with optimistic update
+
+children list and create flow works against the server
+
+Protected mutations fail with 401 when no Firebase token is provided, and succeed when a valid token is attached
+
+.env.example exists and README explains setup steps
+
+Notes for you while implementing
+Keep TypeScript strict. Use zod infer for input and output types when possible
+Do not expose any secret keys via EXPO_PUBLIC_ variables
+If a database is not wired yet, keep the data layer isolated in one module so it can be swapped later
+
+When you are done, show me
+
+The diff summary by file
+
+Any new files you added
+
+A short test script I can run to verify list, detail, toggle favorite, create booking, and MailerLite subscribe flows locally
