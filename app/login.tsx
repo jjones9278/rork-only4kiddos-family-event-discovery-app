@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { Stack, router } from 'expo-router';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { router } from 'expo-router';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react-native';
 import { BrandedButton } from '@/components/BrandedButton';
 import { BrandLogo } from '@/components/BrandLogo';
@@ -42,13 +42,11 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
+    <KeyboardAvoidingView
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <Stack.Screen options={{ headerShown: false }} />
-      
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -70,6 +68,10 @@ export default function LoginScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
+              autoComplete="email"
+              textContentType="emailAddress"
+              editable={!loading}
+              returnKeyType="next"
               placeholderTextColor={Colors.textTertiary}
             />
           </View>
@@ -82,17 +84,24 @@ export default function LoginScreen() {
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
+              autoComplete="password"
+              textContentType="password"
+              editable={!loading}
+              returnKeyType="go"
+              onSubmitEditing={handleLogin}
               placeholderTextColor={Colors.textTertiary}
             />
-            <BrandedButton
-              title=""
+            <TouchableOpacity
               onPress={() => setShowPassword(!showPassword)}
               style={styles.eyeButton}
-              icon={showPassword ? 
-                <EyeOff size={20} color={Colors.textSecondary} /> : 
-                <Eye size={20} color={Colors.textSecondary} />
-              }
-            />
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword
+                ? <EyeOff size={20} color={Colors.textSecondary} />
+                : <Eye size={20} color={Colors.textSecondary} />}
+            </TouchableOpacity>
           </View>
 
           <BrandedButton
@@ -112,7 +121,7 @@ export default function LoginScreen() {
           <BrandedButton
             title="Create Family Account"
             onPress={navigateToSignup}
-            style={styles.signupButton}
+            variant="outline"
           />
         </View>
 
@@ -183,10 +192,8 @@ const styles = StyleSheet.create({
     paddingRight: Spacing.sm,
   },
   eyeButton: {
-    backgroundColor: 'transparent',
     paddingHorizontal: Spacing.xs,
     paddingVertical: Spacing.xs,
-    minHeight: 'auto',
   },
   loginButton: {
     marginTop: Spacing.md,
@@ -205,14 +212,6 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.md,
     fontSize: Typography.fontSizes.sm,
     color: Colors.textTertiary,
-  },
-  signupButton: {
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-  },
-  signupButtonText: {
-    color: Colors.primary,
   },
   privacyText: {
     fontSize: Typography.fontSizes.xs,

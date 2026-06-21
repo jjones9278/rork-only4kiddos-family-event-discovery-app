@@ -5,6 +5,17 @@ import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StripeProvider } from "@stripe/stripe-react-native";
+
+// DIAGNOSTIC: log unhandled JS errors to console for Xcode/Console.app capture.
+// The Alert.alert version of this was causing TextInput keyboards to close on
+// every keystroke whenever any render-time error fired in a loop.
+if (typeof ErrorUtils !== 'undefined') {
+  const previousHandler = ErrorUtils.getGlobalHandler();
+  ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
+    console.error('[GlobalError]', isFatal ? 'FATAL' : 'non-fatal', error?.message, error?.stack);
+    previousHandler?.(error, isFatal);
+  });
+}
 // MailerLite is now handled by the backend - no client initialization needed
 import { AuthProvider } from "@/context/AuthContext";
 import { ToastProvider } from "@/components/ToastProvider";
@@ -29,12 +40,13 @@ function RootLayoutNav() {
           presentation: "card",
         }} 
       />
-      <Stack.Screen 
-        name="create-event" 
-        options={{ 
+      <Stack.Screen
+        name="create-event"
+        options={{
           title: "Create Event",
           presentation: "modal",
-        }} 
+          headerShown: false,
+        }}
       />
       <Stack.Screen 
         name="filters" 
@@ -71,19 +83,21 @@ function RootLayoutNav() {
           presentation: "card",
         }} 
       />
-      <Stack.Screen 
-        name="login" 
-        options={{ 
+      <Stack.Screen
+        name="login"
+        options={{
           title: "Sign In",
           presentation: "modal",
-        }} 
+          headerShown: false,
+        }}
       />
-      <Stack.Screen 
-        name="signup" 
-        options={{ 
+      <Stack.Screen
+        name="signup"
+        options={{
           title: "Create Account",
           presentation: "modal",
-        }} 
+          headerShown: false,
+        }}
       />
       <Stack.Screen 
         name="notifications" 

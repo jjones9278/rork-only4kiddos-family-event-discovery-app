@@ -1,13 +1,31 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
-import { router, Stack } from 'expo-router';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Keyboard, Modal, Pressable } from 'react-native';
+import { router } from 'expo-router';
 import { useNavigation } from '@react-navigation/native';
-import { Calendar, MapPin, DollarSign, Users, X, Sparkles } from 'lucide-react-native';
+import { Calendar, MapPin, DollarSign, Users, X, Sparkles, Clock } from 'lucide-react-native';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useCreateEvent, useCategories } from '@/hooks/use-events-laravel';
 import { BrandLogo } from '@/components/BrandLogo';
 import { BrandedButton } from '@/components/BrandedButton';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/colors';
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const formatDate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const formatTime = (d: Date) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+const parseDate = (s: string): Date => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return new Date();
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+};
+const parseTime = (s: string): Date => {
+  const m = /^(\d{2}):(\d{2})$/.exec(s);
+  const d = new Date();
+  if (m) { d.setHours(Number(m[1])); d.setMinutes(Number(m[2])); }
+  d.setSeconds(0);
+  d.setMilliseconds(0);
+  return d;
+};
 
 export default function CreateEventScreen() {
   const createEvent = useCreateEvent();
@@ -24,7 +42,24 @@ export default function CreateEventScreen() {
   const [date, setDate] = useState('');           // YYYY-MM-DD
   const [startTime, setStartTime] = useState(''); // HH:mm (24h)
   const [endTime, setEndTime] = useState('');     // HH:mm (24h)
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
   const [venue, setVenue] = useState('');
+
+  const onDateChange = (event: DateTimePickerEvent, selected?: Date) => {
+    // Android dismisses on its own; iOS keeps the spinner open until we close it.
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    if (event.type === 'set' && selected) setDate(formatDate(selected));
+  };
+  const onStartChange = (event: DateTimePickerEvent, selected?: Date) => {
+    if (Platform.OS === 'android') setShowStartPicker(false);
+    if (event.type === 'set' && selected) setStartTime(formatTime(selected));
+  };
+  const onEndChange = (event: DateTimePickerEvent, selected?: Date) => {
+    if (Platform.OS === 'android') setShowEndPicker(false);
+    if (event.type === 'set' && selected) setEndTime(formatTime(selected));
+  };
   const [price, setPrice] = useState('');
   const [ticketName, setTicketName] = useState('General Admission');
   const [maxAttendees, setMaxAttendees] = useState('');
@@ -84,7 +119,6 @@ export default function CreateEventScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Stack.Screen options={{ headerShown: false }} />
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -171,38 +205,134 @@ export default function CreateEventScreen() {
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Date *</Text>
-          <View style={styles.inputWithIcon}>
+          <TouchableOpacity
+            style={styles.inputWithIcon}
+            onPress={() => { Keyboard.dismiss(); setShowDatePicker(true); }}
+            accessibilityRole="button"
+            accessibilityLabel="Pick date"
+          >
             <Calendar size={18} color="#9CA3AF" />
-            <TextInput
-              style={styles.inputField}
-              value={date}
-              onChangeText={setDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="#9CA3AF"
-            />
-          </View>
+            <Text style={[styles.inputField, !date && styles.pickerPlaceholder]}>
+              {date || 'YYYY-MM-DD'}
+            </Text>
+          </TouchableOpacity>
+          {Platform.OS === 'ios' ? (
+            <Modal visible={showDatePicker} transparent animationType="slide" onRequestClose={() => setShowDatePicker(false)}>
+              <Pressable style={styles.pickerBackdrop} onPress={() => setShowDatePicker(false)} />
+              <View style={styles.pickerSheet}>
+                <View style={styles.pickerSheetHeader}>
+                  <TouchableOpacity onPress={() => setShowDatePicker(false)}><Text style={styles.pickerCancel}>Cancel</Text></TouchableOpacity>
+                  <Text style={styles.pickerTitle}>Pick Date</Text>
+                  <TouchableOpacity onPress={() => setShowDatePicker(false)}><Text style={styles.pickerDone}>Done</Text></TouchableOpacity>
+                </View>
+                <DateTimePicker
+                  value={date ? parseDate(date) : new Date()}
+                  mode="date"
+                  display="spinner"
+                  minimumDate={new Date()}
+                  onChange={onDateChange}
+                />
+              </View>
+            </Modal>
+          ) : (
+            showDatePicker && (
+              <DateTimePicker
+                value={date ? parseDate(date) : new Date()}
+                mode="date"
+                display="default"
+                minimumDate={new Date()}
+                onChange={onDateChange}
+              />
+            )
+          )}
         </View>
 
         <View style={styles.row}>
           <View style={[styles.inputGroup, styles.halfWidth]}>
             <Text style={styles.label}>Start Time *</Text>
-            <TextInput
-              style={styles.input}
-              value={startTime}
-              onChangeText={setStartTime}
-              placeholder="14:30"
-              placeholderTextColor="#9CA3AF"
-            />
+            <TouchableOpacity
+              style={styles.inputWithIcon}
+              onPress={() => { Keyboard.dismiss(); setShowStartPicker(true); }}
+              accessibilityRole="button"
+              accessibilityLabel="Pick start time"
+            >
+              <Clock size={18} color="#9CA3AF" />
+              <Text style={[styles.inputField, !startTime && styles.pickerPlaceholder]}>
+                {startTime || 'HH:mm'}
+              </Text>
+            </TouchableOpacity>
+            {Platform.OS === 'ios' ? (
+              <Modal visible={showStartPicker} transparent animationType="slide" onRequestClose={() => setShowStartPicker(false)}>
+                <Pressable style={styles.pickerBackdrop} onPress={() => setShowStartPicker(false)} />
+                <View style={styles.pickerSheet}>
+                  <View style={styles.pickerSheetHeader}>
+                    <TouchableOpacity onPress={() => setShowStartPicker(false)}><Text style={styles.pickerCancel}>Cancel</Text></TouchableOpacity>
+                    <Text style={styles.pickerTitle}>Start Time</Text>
+                    <TouchableOpacity onPress={() => setShowStartPicker(false)}><Text style={styles.pickerDone}>Done</Text></TouchableOpacity>
+                  </View>
+                  <DateTimePicker
+                    value={startTime ? parseTime(startTime) : new Date()}
+                    mode="time"
+                    is24Hour
+                    display="spinner"
+                    onChange={onStartChange}
+                  />
+                </View>
+              </Modal>
+            ) : (
+              showStartPicker && (
+                <DateTimePicker
+                  value={startTime ? parseTime(startTime) : new Date()}
+                  mode="time"
+                  is24Hour
+                  display="default"
+                  onChange={onStartChange}
+                />
+              )
+            )}
           </View>
           <View style={[styles.inputGroup, styles.halfWidth]}>
             <Text style={styles.label}>End Time *</Text>
-            <TextInput
-              style={styles.input}
-              value={endTime}
-              onChangeText={setEndTime}
-              placeholder="16:00"
-              placeholderTextColor="#9CA3AF"
-            />
+            <TouchableOpacity
+              style={styles.inputWithIcon}
+              onPress={() => { Keyboard.dismiss(); setShowEndPicker(true); }}
+              accessibilityRole="button"
+              accessibilityLabel="Pick end time"
+            >
+              <Clock size={18} color="#9CA3AF" />
+              <Text style={[styles.inputField, !endTime && styles.pickerPlaceholder]}>
+                {endTime || 'HH:mm'}
+              </Text>
+            </TouchableOpacity>
+            {Platform.OS === 'ios' ? (
+              <Modal visible={showEndPicker} transparent animationType="slide" onRequestClose={() => setShowEndPicker(false)}>
+                <Pressable style={styles.pickerBackdrop} onPress={() => setShowEndPicker(false)} />
+                <View style={styles.pickerSheet}>
+                  <View style={styles.pickerSheetHeader}>
+                    <TouchableOpacity onPress={() => setShowEndPicker(false)}><Text style={styles.pickerCancel}>Cancel</Text></TouchableOpacity>
+                    <Text style={styles.pickerTitle}>End Time</Text>
+                    <TouchableOpacity onPress={() => setShowEndPicker(false)}><Text style={styles.pickerDone}>Done</Text></TouchableOpacity>
+                  </View>
+                  <DateTimePicker
+                    value={endTime ? parseTime(endTime) : new Date()}
+                    mode="time"
+                    is24Hour
+                    display="spinner"
+                    onChange={onEndChange}
+                  />
+                </View>
+              </Modal>
+            ) : (
+              showEndPicker && (
+                <DateTimePicker
+                  value={endTime ? parseTime(endTime) : new Date()}
+                  mode="time"
+                  is24Hour
+                  display="default"
+                  onChange={onEndChange}
+                />
+              )
+            )}
           </View>
         </View>
 
@@ -365,6 +495,42 @@ const styles = StyleSheet.create({
   helperText: {
     fontSize: Typography.fontSizes.sm,
     color: Colors.textSecondary,
+  },
+  pickerPlaceholder: {
+    color: '#9CA3AF',
+  },
+  pickerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  pickerSheet: {
+    backgroundColor: '#fff',
+    paddingBottom: Spacing.xl,
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+  },
+  pickerSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  pickerTitle: {
+    fontSize: Typography.fontSizes.base,
+    fontWeight: Typography.fontWeights.semibold,
+    color: Colors.textPrimary,
+  },
+  pickerCancel: {
+    color: Colors.textSecondary,
+    fontSize: Typography.fontSizes.base,
+  },
+  pickerDone: {
+    color: Colors.primary,
+    fontSize: Typography.fontSizes.base,
+    fontWeight: Typography.fontWeights.semibold,
   },
   input: {
     borderWidth: 2,

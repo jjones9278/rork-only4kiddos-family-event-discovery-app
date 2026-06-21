@@ -1,8 +1,8 @@
 import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { Plus, Calendar, Heart, Settings, ChevronRight, Edit2, Trash2, Star, Award, Crown, Mail, LogOut } from 'lucide-react-native';
+import { Plus, Calendar, Heart, Settings, ChevronRight, Edit2, Trash2, Star, Award, Crown, Mail, LogOut, UserX } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { useChildren, useFavoriteEvents, useBookings, useUpcomingBookings, useDeleteChild } from '@/hooks/use-events-laravel';
+import { useChildren, useFavoriteEvents, useBookings, useUpcomingBookings, useDeleteChild, useDeleteAccount } from '@/hooks/use-events-laravel';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
 import EmptyState from '@/components/EmptyState';
@@ -21,6 +21,7 @@ export default function ProfileScreen() {
   const { refetch: refetchBookings } = useBookings();
   const { upcomingBookings } = useUpcomingBookings();
   const deleteChild = useDeleteChild();
+  const deleteAccount = useDeleteAccount();
   const { user, signOut } = useAuth();
   const { toastSuccess, toastError } = useToastHelpers();
 
@@ -56,6 +57,35 @@ export default function ProfileScreen() {
           }
         },
       ]
+    );
+  };
+
+  // Account deletion — Apple requires this flow to be in-app and easy to find.
+  // Calls DELETE /api/account with the Firebase Bearer token (apiFetch attaches
+  // it automatically), then signs out from Firebase and returns to login.
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure? This will permanently delete your account, children, bookings, and favorites. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteAccount.mutateAsync();
+              // Server-side delete succeeded — clear local Firebase auth too.
+              // signOut may fail if the Firebase user is already gone; swallow.
+              try { await signOut(); } catch {}
+              toastSuccess('Account Deleted', 'Your account has been permanently removed.');
+              router.replace('/login' as any);
+            } catch (error: any) {
+              toastError('Delete Failed', error?.message || 'Unable to delete your account right now. Please try again.');
+            }
+          },
+        },
+      ],
     );
   };
 
@@ -165,6 +195,19 @@ export default function ProfileScreen() {
         >
           <LogOut size={20} color={Colors.error} />
           <Text style={[styles.menuText, styles.signOutText]}>Sign Out</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.menuItem, styles.deleteAccountMenuItem]}
+          onPress={handleDeleteAccount}
+          disabled={deleteAccount.isPending}
+          accessibilityRole="button"
+          accessibilityLabel="Delete account permanently"
+        >
+          <UserX size={20} color={Colors.error} />
+          <Text style={[styles.menuText, styles.deleteAccountText]}>
+            {deleteAccount.isPending ? 'Deleting…' : 'Delete Account'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -351,6 +394,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
@@ -390,5 +435,15 @@ const styles = StyleSheet.create({
   },
   signOutText: {
     color: Colors.error,
+  },
+  deleteAccountMenuItem: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    marginTop: Spacing.sm,
+    paddingTop: Spacing.lg,
+  },
+  deleteAccountText: {
+    color: Colors.error,
+    fontWeight: Typography.fontWeights.semibold,
   },
 });

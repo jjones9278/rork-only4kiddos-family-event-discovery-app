@@ -8,7 +8,9 @@
     "scheme": "only4kiddos",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "runtimeVersion": { "policy": "appVersion" },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "updates": {
       "url": "https://u.expo.dev/703d0e7c-fce1-4afd-bad2-30480ab9dcb8",
       "checkAutomatically": "ON_LOAD",
@@ -24,15 +26,12 @@
       "bundleIdentifier": "com.only4kiddos.app",
       "buildNumber": "1",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "We show relevant events near you.",
         "UIBackgroundModes": [
-          "background-fetch",
+          "fetch",
           "remote-notification"
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       },
-      "config": {
-        "googleMapsApiKey": "GOOGLE_MAPS_IOS_API_KEY"
-      }
     },
     "android": {
       "adaptiveIcon": {
@@ -41,11 +40,19 @@
       },
       "package": "com.only4kiddos.app",
       "versionCode": 1,
-      "config": {
-        "googleMaps": {
-          "apiKey": "GOOGLE_MAPS_ANDROID_API_KEY"
-        }
-      }
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "POST_NOTIFICATIONS",
+        "VIBRATE",
+        "WAKE_LOCK",
+        "RECEIVE_BOOT_COMPLETED"
+      ],
+      "blockedPermissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
@@ -67,7 +74,8 @@
           "merchantIdentifier": "merchant.com.only4kiddos.app",
           "enableGooglePay": false
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "notification": {
       "icon": "./assets/images/notification-icon.png",

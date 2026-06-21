@@ -1,91 +1,67 @@
+// Map-free venue display. We deliberately do NOT use react-native-maps because
+// it native-links Google Play Services Location on Android, which Google Play's
+// scanner flags for the children-under-13 target audience. This component
+// shows the venue name + address and offers an "Open in Maps" button that
+// hands the URL to the OS via Linking — no location SDK, no permissions.
 import React from 'react';
 import { View, StyleSheet, Text, TouchableOpacity, Linking, Platform } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import { Navigation, ExternalLink } from 'lucide-react-native';
+import { MapPin, ExternalLink } from 'lucide-react-native';
 import { Event } from '@/types/event';
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/colors';
 
 interface EventMapProps {
   event: Event;
-  height?: number;
+  height?: number;            // accepted for API compat; unused now
   showDirectionsButton?: boolean;
 }
 
-export function EventMap({ 
-  event, 
-  height = 200, 
-  showDirectionsButton = true 
-}: EventMapProps) {
-  // Default coordinates for San Francisco if no coordinates are provided
-  const latitude = event.latitude || 37.7749;
-  const longitude = event.longitude || -122.4194;
-  
-  const region = {
-    latitude,
-    longitude,
-    latitudeDelta: 0.01,
-    longitudeDelta: 0.01,
-  };
-
-  const openDirections = () => {
-    const url = Platform.select({
-      ios: `maps:0,0?q=${latitude},${longitude}`,
-      android: `geo:0,0?q=${latitude},${longitude}(${event.title})`,
-      default: `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`,
+export function EventMap({ event, showDirectionsButton = true }: EventMapProps) {
+  const openInMaps = async () => {
+    const query = encodeURIComponent(
+      event.address ||
+      event.location ||
+      (event.latitude != null && event.longitude != null ? `${event.latitude},${event.longitude}` : ''),
+    );
+    if (!query) return;
+    const nativeUrl = Platform.select({
+      ios: `maps://?q=${query}`,
+      android: `geo:0,0?q=${query}`,
+      default: `https://www.google.com/maps/search/?api=1&query=${query}`,
     });
-
-    Linking.canOpenURL(url!).then((supported) => {
-      if (supported) {
-        Linking.openURL(url!);
-      } else {
-        // Fallback to Google Maps web
-        Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`);
-      }
-    });
+    const fallbackUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
+    try {
+      const canOpen = nativeUrl ? await Linking.canOpenURL(nativeUrl) : false;
+      await Linking.openURL(canOpen ? nativeUrl! : fallbackUrl);
+    } catch {
+      // Swallow — never crash the app from a maps tap.
+    }
   };
 
   return (
     <View style={styles.container}>
-      <View style={[styles.mapContainer, { height }]}>
-        <MapView
-          provider={PROVIDER_GOOGLE}
-          style={styles.map}
-          region={region}
-          scrollEnabled={true}
-          zoomEnabled={true}
-          showsUserLocation={true}
-          showsMyLocationButton={false}
-        >
-          <Marker
-            coordinate={{ latitude, longitude }}
-            title={event.title}
-            description={event.address}
-          />
-        </MapView>
-        
-        {showDirectionsButton && (
-          <TouchableOpacity 
-            style={styles.directionsButton}
-            onPress={openDirections}
-          >
-            <Navigation size={16} color={Colors.textOnPrimary} />
-            <Text style={styles.directionsText}>Directions</Text>
-          </TouchableOpacity>
-        )}
+      <View style={styles.header}>
+        <View style={styles.iconBadge}>
+          <MapPin size={24} color={Colors.primary} />
+        </View>
+        <View style={styles.headerText}>
+          <Text style={styles.locationName} numberOfLines={2}>{event.location || 'Venue'}</Text>
+          {event.address && event.address !== event.location ? (
+            <Text style={styles.locationAddress} numberOfLines={3}>{event.address}</Text>
+          ) : null}
+        </View>
       </View>
-      
-      <View style={styles.locationInfo}>
-        <Text style={styles.locationName}>{event.location}</Text>
-        <Text style={styles.locationAddress}>{event.address}</Text>
-        
-        <TouchableOpacity 
-          style={styles.viewInMapsButton}
-          onPress={openDirections}
+
+      {showDirectionsButton ? (
+        <TouchableOpacity
+          style={styles.directionsButton}
+          onPress={openInMaps}
+          accessibilityRole="button"
+          accessibilityLabel="Open venue in Maps"
         >
-          <ExternalLink size={14} color={Colors.primary} />
-          <Text style={styles.viewInMapsText}>View in Maps</Text>
+          <ExternalLink size={16} color={Colors.textOnPrimary} />
+          <Text style={styles.directionsText}>Open in Maps</Text>
         </TouchableOpacity>
-      </View>
+      ) : null}
     </View>
   );
 }
@@ -94,46 +70,32 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.lg,
-    overflow: 'hidden',
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    padding: Spacing.lg,
+    gap: Spacing.md,
     borderWidth: 1,
     borderColor: Colors.borderLight,
-  },
-  mapContainer: {
-    position: 'relative',
-  },
-  map: {
-    width: '100%',
-    height: '100%',
-  },
-  directionsButton: {
-    position: 'absolute',
-    bottom: Spacing.md,
-    right: Spacing.md,
-    backgroundColor: Colors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.xl,
-    gap: 6,
-    shadowColor: Colors.primary,
+    shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  directionsText: {
-    color: Colors.textOnPrimary,
-    fontSize: Typography.fontSizes.sm,
-    fontWeight: Typography.fontWeights.semibold,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.md,
   },
-  locationInfo: {
-    padding: Spacing.lg,
+  iconBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.brandSurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerText: {
+    flex: 1,
+    minWidth: 0,
   },
   locationName: {
     fontSize: Typography.fontSizes.base,
@@ -144,18 +106,21 @@ const styles = StyleSheet.create({
   locationAddress: {
     fontSize: Typography.fontSizes.sm,
     color: Colors.textSecondary,
-    marginBottom: Spacing.md,
     lineHeight: Typography.lineHeights.relaxed * Typography.fontSizes.sm,
   },
-  viewInMapsButton: {
+  directionsButton: {
+    backgroundColor: Colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
     gap: 6,
-    alignSelf: 'flex-start',
   },
-  viewInMapsText: {
-    color: Colors.primary,
+  directionsText: {
+    color: Colors.textOnPrimary,
     fontSize: Typography.fontSizes.sm,
-    fontWeight: Typography.fontWeights.medium,
+    fontWeight: Typography.fontWeights.semibold,
   },
 });

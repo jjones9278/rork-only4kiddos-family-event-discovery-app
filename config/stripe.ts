@@ -1,23 +1,17 @@
 // Stripe key management.
 //
-// In TEST mode the mobile app uses the publishable key bundled in .env
-// (EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY, must be a pk_test_…).
+// Mobile uses the publishable key bundled in .env
+// (EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY). Swap the value to a pk_live_… for
+// production, pk_test_… for development. Laravel's STRIPE_SECRET must be in
+// the same mode (sk_live_… / sk_test_…) or Stripe rejects the PaymentIntent.
 //
-// In LIVE mode the mobile app does NOT bundle a live key. Instead it expects
-// Laravel to return a `publishableKey` alongside the bookings response so the
-// key can be rotated server-side without an app release. The checkout screen
-// calls `initStripe({ publishableKey })` dynamically when that field arrives.
-//
-// Flip this flag to switch modes. The Laravel server's STRIPE_SECRET must be
-// in the same mode (sk_test_… for test, sk_live_… for live) or Stripe will
-// refuse the payment intent with the "No such payment intent" error.
+// The mobile app reads `paymentIntentClientSecret` from the booking response;
+// no other Stripe credential is fetched from the backend.
 
-export const STRIPE_TEST_MODE = true;
-
-export const STRIPE_TEST_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
+export const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
 
 export function getInitialStripePublishableKey(): string {
-  return STRIPE_TEST_MODE ? STRIPE_TEST_PUBLISHABLE_KEY : '';
+  return STRIPE_PUBLISHABLE_KEY;
 }
 
 // ─── DEV-ONLY: bypass Laravel for Stripe testing ─────────────────────────────
@@ -35,7 +29,7 @@ export function getInitialStripePublishableKey(): string {
 //      from .env) before any production build. The secret would otherwise
 //      ship inside the JS bundle on every user's device.
 
-export const STRIPE_BYPASS_LARAVEL_FOR_TESTING = true;
+export const STRIPE_BYPASS_LARAVEL_FOR_TESTING = false;
 
 const STRIPE_TEST_SECRET_KEY = process.env.EXPO_PUBLIC_STRIPE_TEST_SECRET_KEY || '';
 

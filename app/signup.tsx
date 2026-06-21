@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { Stack, router } from 'expo-router';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { router } from 'expo-router';
 import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Heart } from 'lucide-react-native';
 import { BrandedButton } from '@/components/BrandedButton';
 import { BrandLogo } from '@/components/BrandLogo';
@@ -73,8 +73,6 @@ export default function SignupScreen() {
       style={styles.container} 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <Stack.Screen options={{ headerShown: false }} />
-      
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -123,15 +121,17 @@ export default function SignupScreen() {
               secureTextEntry={!showPassword}
               placeholderTextColor={Colors.textTertiary}
             />
-            <BrandedButton
-              title=""
+            <TouchableOpacity
               onPress={() => setShowPassword(!showPassword)}
               style={styles.eyeButton}
-              icon={showPassword ? 
-                <EyeOff size={20} color={Colors.textSecondary} /> : 
-                <Eye size={20} color={Colors.textSecondary} />
-              }
-            />
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword
+                ? <EyeOff size={20} color={Colors.textSecondary} />
+                : <Eye size={20} color={Colors.textSecondary} />}
+            </TouchableOpacity>
           </View>
 
           <View style={styles.inputContainer}>
@@ -144,15 +144,17 @@ export default function SignupScreen() {
               secureTextEntry={!showConfirmPassword}
               placeholderTextColor={Colors.textTertiary}
             />
-            <BrandedButton
-              title=""
+            <TouchableOpacity
               onPress={() => setShowConfirmPassword(!showConfirmPassword)}
               style={styles.eyeButton}
-              icon={showConfirmPassword ? 
-                <EyeOff size={20} color={Colors.textSecondary} /> : 
-                <Eye size={20} color={Colors.textSecondary} />
-              }
-            />
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel={showConfirmPassword ? 'Hide password' : 'Show password'}
+            >
+              {showConfirmPassword
+                ? <EyeOff size={20} color={Colors.textSecondary} />
+                : <Eye size={20} color={Colors.textSecondary} />}
+            </TouchableOpacity>
           </View>
 
           <View style={styles.benefitsContainer}>
@@ -187,7 +189,7 @@ export default function SignupScreen() {
           <BrandedButton
             title="Sign In"
             onPress={navigateToLogin}
-            style={styles.loginButton}
+            variant="outline"
           />
         </View>
 
@@ -259,10 +261,8 @@ const styles = StyleSheet.create({
     paddingRight: Spacing.sm,
   },
   eyeButton: {
-    backgroundColor: 'transparent',
     paddingHorizontal: Spacing.xs,
     paddingVertical: Spacing.xs,
-    minHeight: 'auto',
   },
   benefitsContainer: {
     backgroundColor: Colors.brandSurface,

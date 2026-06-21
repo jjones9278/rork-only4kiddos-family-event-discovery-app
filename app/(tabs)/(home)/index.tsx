@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SlidersHorizontal, Sparkles, Heart } from 'lucide-react-native';
@@ -7,40 +7,32 @@ import { CategoryFilter } from '@/components/CategoryFilter';
 import { BrandedHeader } from '@/components/BrandedHeader';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
-import EmptyState from '@/components/EmptyState';
 import { useEventList } from '@/hooks/use-events-laravel';
+import { useFilters, toggleCategoryFilter } from '@/hooks/use-filters-store';
 import { useToastHelpers } from '@/components/ToastProvider';
 import { EventCategory } from '@/types/event';
 import { router } from 'expo-router';
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/colors';
 
 export default function HomeScreen() {
-  const [selectedCategories, setSelectedCategories] = useState<EventCategory[]>([]);
   const { toastSuccess, toastError } = useToastHelpers();
-  
-  // Use tRPC hook for events with current filters
+  const filterState = useFilters();
+  const selectedCategories = filterState.categories as EventCategory[];
+
   const filters = {
     categories: selectedCategories.length > 0 ? selectedCategories : undefined,
+    priceRange: filterState.priceRange,
+    ageRange: filterState.ageRange,
     limit: 20,
     offset: 0,
   };
-  
+
   const { data, isLoading, isError, refetch } = useEventList(filters);
   const events = data?.items || [];
 
-  // Show empty state when no events found
-  if (!isLoading && !isError && data && data.items.length === 0) {
-    return <EmptyState title="No events found" message="Try different filters or check back later for new events." />;
-  }
-
-  const handleCategoryToggle = (category: EventCategory) => {
-    const updated = selectedCategories.includes(category)
-      ? selectedCategories.filter(c => c !== category)
-      : [...selectedCategories, category];
-    
-    setSelectedCategories(updated);
-  };
-
+  // IMPORTANT: every hook must be called on every render — do NOT add early
+  // returns above this line, or React will throw "Rendered fewer hooks than
+  // expected" and crash the entire app (e.g. when filtering returns 0 events).
   const onRefresh = React.useCallback(async () => {
     try {
       await refetch();
@@ -49,6 +41,10 @@ export default function HomeScreen() {
       toastError('Failed to refresh', 'Please check your connection and try again.');
     }
   }, [refetch, toastSuccess, toastError]);
+
+  const handleCategoryToggle = (category: EventCategory) => {
+    toggleCategoryFilter(category);
+  };
 
   const ListHeader = () => (
     <View>
@@ -102,6 +98,11 @@ export default function HomeScreen() {
   if (isError) {
     return <ErrorState message="Unable to load events. Please check your connection." onRetry={refetch} />;
   }
+
+  // NOTE: do NOT early-return on empty results — that would replace the
+  // BrandedHeader and CategoryFilter chips, leaving the user no way to clear
+  // the filter that caused the empty state. The FlatList's ListEmptyComponent
+  // already handles the no-results UI inline below the chips.
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

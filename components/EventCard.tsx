@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Linking, Platform } from 'react-native';
 import { Heart, MapPin, Calendar, Users, Navigation } from 'lucide-react-native';
 import { Event } from '@/types/event';
 import { useToggleFavorite, useIsFavorite } from '@/hooks/use-events-laravel';
@@ -57,7 +57,7 @@ export function EventCard({ event, onPress }: EventCardProps) {
       
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.category}>{event.category.toUpperCase()}</Text>
+          <Text style={styles.category}>{(event.category || 'EVENT').toUpperCase()}</Text>
           <Text style={styles.ageRange}>Ages {event.ageRange.min}-{event.ageRange.max}</Text>
         </View>
         
@@ -72,17 +72,32 @@ export function EventCard({ event, onPress }: EventCardProps) {
           <View style={styles.detailRow}>
             <MapPin size={14} color={Colors.textSecondary} />
             <Text style={styles.detailText} numberOfLines={1}>{event.location}</Text>
-            <AccessiblePressable 
+            <AccessiblePressable
               style={styles.mapButton}
               accessibilityLabel="Open in maps"
-              onPress={(e) => {
+              onPress={async (e) => {
                 e.stopPropagation();
-                const latitude = event.latitude || 37.7749;
-                const longitude = event.longitude || -122.4194;
-                const url = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
-                // For web, open in new tab
-                if (typeof window !== 'undefined') {
-                  window.open(url, '_blank');
+                // Prefer the event's address text — falls back to coords if
+                // present, then a non-crash no-op if the address is empty.
+                const query = encodeURIComponent(
+                  event.address ||
+                  event.location ||
+                  (event.latitude != null && event.longitude != null ? `${event.latitude},${event.longitude}` : '')
+                );
+                if (!query) return;
+                const url = `https://www.google.com/maps/search/?api=1&query=${query}`;
+                try {
+                  if (Platform.OS === 'web') {
+                    // window.open exists on web only — on iOS native this
+                    // previously threw and crashed the app.
+                    if (typeof window !== 'undefined' && typeof window.open === 'function') {
+                      window.open(url, '_blank');
+                    }
+                  } else {
+                    await Linking.openURL(url);
+                  }
+                } catch {
+                  // Never propagate — a navigation tap must not crash the app.
                 }
               }}
             >

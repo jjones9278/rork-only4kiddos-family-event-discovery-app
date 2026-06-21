@@ -6,20 +6,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, Text, Alert, StyleSheet } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
-import { useStripe, initStripe } from '@stripe/stripe-react-native';
+import { useStripe } from '@stripe/stripe-react-native';
 import { BrandedButton } from '@/components/BrandedButton';
 import { BrandedSpinner } from '@/components/BrandedSpinner';
 import { AuthGuard } from '@/components/AuthGuard';
 import { useConfirmBooking } from '@/hooks/use-events-laravel';
 import { useToastHelpers } from '@/components/ToastProvider';
 import { Colors, Typography, Spacing } from '@/constants/colors';
-import { STRIPE_TEST_MODE } from '@/config/stripe';
 
 export default function Checkout() {
   const params = useLocalSearchParams();
   const bookingId = String(params.bookingId ?? '');
   const clientSecret = String(params.clientSecret ?? '');
-  const publishableKeyFromLaravel = String(params.publishableKey ?? '');
   const eventTitle = String(params.eventTitle ?? 'Family Event');
   const amount = parseFloat(String(params.amount ?? '0')) || 0;
 
@@ -37,19 +35,6 @@ export default function Checkout() {
       return;
     }
     (async () => {
-      // Live mode: Laravel returned a publishableKey alongside the clientSecret
-      // (the root-mounted StripeProvider has no live key bundled). Init Stripe
-      // with it before the Payment Sheet picks it up.
-      if (!STRIPE_TEST_MODE && publishableKeyFromLaravel) {
-        try {
-          await initStripe({ publishableKey: publishableKeyFromLaravel });
-        } catch (e: any) {
-          Alert.alert('Stripe Init Failed', e?.message || 'Unable to configure Stripe.');
-          setInitializing(false);
-          return;
-        }
-      }
-
       const { error } = await initPaymentSheet({
         merchantDisplayName: 'Only4Kiddos',
         paymentIntentClientSecret: clientSecret,
@@ -63,7 +48,7 @@ export default function Checkout() {
       }
       setInitializing(false);
     })();
-  }, [clientSecret, publishableKeyFromLaravel, initPaymentSheet]);
+  }, [clientSecret, initPaymentSheet]);
 
   const handlePay = async () => {
     if (!ready || presentedRef.current) return;

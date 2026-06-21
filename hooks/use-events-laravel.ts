@@ -364,9 +364,16 @@ export function useFavorites() {
   const load = useCallback(async () => {
     try {
       setIsLoading(true);
-      const result = await apiFetch<Event[]>('/favorites');
-      seedFavorites(result, true);
-      setData(result);
+      const result: any = await apiFetch<any>('/favorites');
+      const items: Event[] = Array.isArray(result)
+        ? result
+        : Array.isArray(result?.data) ? result.data
+        : Array.isArray(result?.items) ? result.items
+        : [];
+      seedFavorites(items, true);
+      setData(items);
+    } catch {
+      // swallow — keep previous data, don't crash UI
     } finally {
       setIsLoading(false);
     }
@@ -427,8 +434,15 @@ export function useChildren() {
   const load = useCallback(async () => {
     try {
       setIsLoading(true);
-      const result = await apiFetch<Child[]>('/children');
-      setData(result);
+      const result: any = await apiFetch<any>('/children');
+      const items: Child[] = Array.isArray(result)
+        ? result
+        : Array.isArray(result?.data) ? result.data
+        : Array.isArray(result?.items) ? result.items
+        : [];
+      setData(items);
+    } catch {
+      // swallow — keep previous data, don't crash UI
     } finally {
       setIsLoading(false);
     }
@@ -533,8 +547,18 @@ export function useBookings() {
   const load = useCallback(async () => {
     try {
       setIsLoading(true);
-      const result = await apiFetch<Booking[]>('/bookings');
-      setData(result);
+      const result: any = await apiFetch<any>('/bookings');
+      // Defensive: Laravel may return [] OR a paginator wrapper {data:[...]} /
+      // {items:[...]} OR an error envelope. Always coerce to an array so
+      // downstream .filter/.map/.length work.
+      const items: Booking[] = Array.isArray(result)
+        ? result
+        : Array.isArray(result?.data) ? result.data
+        : Array.isArray(result?.items) ? result.items
+        : [];
+      setData(items);
+    } catch {
+      // Auth errors etc. — keep last good data, don't crash consumers.
     } finally {
       setIsLoading(false);
     }
@@ -545,13 +569,10 @@ export function useBookings() {
 }
 
 // Booking response from POST /api/bookings. For paid events, the response
-// includes a Stripe client secret which the screen must present via Stripe's
-// payment sheet, then call useConfirmBooking on success.
-// `publishableKey` is only used in LIVE mode (see config/stripe.ts) — Laravel
-// returns it so the mobile app doesn't bundle the live pk_live_… in its JS.
+// includes a Stripe client secret which the screen presents via Stripe's
+// Payment Sheet, then calls useConfirmBooking on success.
 export interface CreateBookingResponse extends Booking {
   paymentIntentClientSecret?: string;
-  publishableKey?: string;
 }
 
 // useCreateBooking — POST /api/bookings { eventId, childIds }
@@ -608,10 +629,11 @@ export function useCancelBooking() {
 
 // useUpcomingBookings — tRPC-compatible computed hook derived from useBookings
 export function useUpcomingBookings() {
-  const { data: bookings = [], isLoading } = useBookings();
+  const { data: bookings, isLoading } = useBookings();
+  const list: Booking[] = Array.isArray(bookings) ? bookings : [];
 
-  const upcomingBookings = bookings
-    .filter((b: Booking) => b.status === 'confirmed')
+  const upcomingBookings = list
+    .filter((b: Booking) => b?.status === 'confirmed')
     .sort((a: Booking, b: Booking) => new Date(a.bookingDate).getTime() - new Date(b.bookingDate).getTime());
 
   return { upcomingBookings, isLoading };
@@ -649,4 +671,22 @@ export function useUser() {
 
 export async function syncFirebaseUser(): Promise<void> {
   await apiFetch('/auth/firebase', { method: 'POST' });
+}
+
+// useDeleteAccount — DELETE /api/account
+// Apple-required account-deletion flow. After this resolves the caller MUST
+// also sign the user out from Firebase and navigate to /login.
+export function useDeleteAccount() {
+  const [isPending, setIsPending] = useState(false);
+
+  const mutateAsync = async () => {
+    setIsPending(true);
+    try {
+      return await apiFetch<{ success?: boolean; message?: string }>('/account', { method: 'DELETE' });
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { mutateAsync, isPending };
 }

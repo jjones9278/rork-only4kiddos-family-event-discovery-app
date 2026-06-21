@@ -6,16 +6,19 @@ import { EventCategory } from '@/types/event';
 import { categories } from '@/mocks/categories';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
+import { useFilters, setFilters, resetFilters } from '@/hooks/use-filters-store';
 
 export default function FiltersScreen() {
-  // Filters are now handled in parent components
-  const [selectedCategories, setSelectedCategories] = useState<EventCategory[]>([]);
-  const [ageRange, setAgeRange] = useState({ min: 0, max: 18 });
-  const [priceRange, setPriceRange] = useState({ min: 0, max: 100 });
+  // Seed local working copy from the shared store. The store is only written
+  // when the user taps Apply, so a partially-tweaked filter that's then
+  // dismissed (back gesture, X) doesn't leak.
+  const current = useFilters();
+  const [selectedCategories, setSelectedCategories] = useState<EventCategory[]>(current.categories as EventCategory[]);
+  const [ageRange, setAgeRange] = useState(current.ageRange);
+  const [priceRange, setPriceRange] = useState(current.priceRange);
 
   const handleApply = () => {
-    // Note: Filters are now managed per component
-    // This screen could be enhanced to pass filters back to parent
+    setFilters({ categories: selectedCategories, ageRange, priceRange });
     router.back();
   };
 
@@ -23,6 +26,7 @@ export default function FiltersScreen() {
     setSelectedCategories([]);
     setAgeRange({ min: 0, max: 18 });
     setPriceRange({ min: 0, max: 100 });
+    resetFilters();
   };
 
   const toggleCategory = (category: EventCategory) => {
@@ -138,10 +142,7 @@ export default function FiltersScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
+  container: { flex: 1, backgroundColor: '#fff' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -151,68 +152,20 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  section: {
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 16,
-  },
-  categoriesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  categoryChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
-    marginBottom: 8,
-  },
-  categoryChipText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#4B5563',
-  },
-  categoryChipTextSelected: {
-    color: '#fff',
-  },
-  rangeContainer: {
-    gap: 16,
-  },
-  rangeLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#374151',
-  },
-  priceDisplay: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  sliderContainer: {
-    gap: 8,
-  },
-  sliderLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  slider: {
-    width: '100%',
-    height: 40,
-  },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#1F2937' },
+  content: { flex: 1, padding: 20 },
+  section: { marginBottom: 32 },
+  sectionTitle: { fontSize: 18, fontWeight: '600', color: '#1F2937', marginBottom: 16 },
+  categoriesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  categoryChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#F3F4F6', marginBottom: 8 },
+  categoryChipText: { fontSize: 14, fontWeight: '500', color: '#4B5563' },
+  categoryChipTextSelected: { color: '#fff' },
+  rangeContainer: { gap: 16 },
+  rangeLabel: { fontSize: 16, fontWeight: '500', color: '#374151' },
+  priceDisplay: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  sliderContainer: { gap: 8 },
+  sliderLabel: { fontSize: 14, color: '#6B7280' },
+  slider: { width: '100%', height: 40 },
   footer: {
     flexDirection: 'row',
     gap: 12,
@@ -229,21 +182,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     alignItems: 'center',
   },
-  resetButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  applyButton: {
-    flex: 2,
-    backgroundColor: '#7C3AED',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  applyButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
+  resetButtonText: { fontSize: 16, fontWeight: '600', color: '#6B7280' },
+  applyButton: { flex: 2, backgroundColor: '#7C3AED', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  applyButtonText: { fontSize: 16, fontWeight: '600', color: '#fff' },
 });

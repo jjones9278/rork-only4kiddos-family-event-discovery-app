@@ -1,0 +1,38 @@
+# .easignore — used by EAS Build INSTEAD of .gitignore for deciding what to
+# upload to the build server. Mirrors .gitignore but allows .env so that
+# EXPO_PUBLIC_* values get inlined into the production bundle.
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# typescript
+*.tsbuildinfo
+.vercel
+
+# .env is intentionally NOT listed — we want EAS to include it.

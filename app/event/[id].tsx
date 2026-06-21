@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert, Share } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Calendar, MapPin, Users, Clock, Heart, Share2, DollarSign, Tag, Accessibility } from 'lucide-react-native';
 import { useEventById, useChildren, useToggleFavorite, useCreateBooking, useIsFavorite } from '@/hooks/use-events-laravel';
@@ -53,6 +53,20 @@ export default function EventDetailsScreen() {
     );
   };
 
+  // Native share sheet. Uses RN's built-in Share API which routes to the OS:
+  // iPhone shows a bottom sheet, iPad shows a popover (and Apple requires an
+  // anchor position — Share API picks it from the tap location automatically).
+  const handleShare = async () => {
+    if (!event) return;
+    try {
+      const url = `https://only4kiddos.com/events/${event.id}`;
+      const message = `${event.title} on ${event.date ? new Date(event.date).toLocaleDateString() : ''} at ${event.location || ''}. Check it out on Only4Kiddos: ${url}`;
+      await Share.share({ title: event.title, message, url });
+    } catch {
+      // User-cancelled or share unavailable — silent.
+    }
+  };
+
   const handleBooking = async () => {
     if (selectedChildren.length === 0) {
       Alert.alert('Select Children', 'Please select at least one child for this event');
@@ -70,7 +84,6 @@ export default function EventDetailsScreen() {
           params: {
             bookingId: 'DEV-BYPASS',
             clientSecret: pi.clientSecret,
-            publishableKey: '',
             eventTitle: event.title,
             amount: String(amount),
           },
@@ -90,15 +103,12 @@ export default function EventDetailsScreen() {
       // Paid event: Laravel returns a Stripe clientSecret and a booking in
       // pending_payment. Route to checkout so the Payment Sheet can collect
       // payment and then call /bookings/{id}/confirm.
-      // In live mode Laravel also returns the matching publishableKey so we
-      // can init Stripe with it before presenting the Payment Sheet.
       if (result.paymentIntentClientSecret) {
         router.push({
           pathname: '/checkout' as any,
           params: {
             bookingId: result.id,
             clientSecret: result.paymentIntentClientSecret,
-            publishableKey: result.publishableKey || '',
             eventTitle: event.title,
             amount: String(event.price * selectedChildren.length),
           },
@@ -124,7 +134,7 @@ export default function EventDetailsScreen() {
       <View style={styles.content}>
         <View style={styles.header}>
           <View style={styles.categoryBadge}>
-            <Text style={styles.categoryText}>{event.category.toUpperCase()}</Text>
+            <Text style={styles.categoryText}>{(event.category || 'EVENT').toUpperCase()}</Text>
           </View>
           <View style={styles.headerActions}>
             <AccessiblePressable 
@@ -140,6 +150,7 @@ export default function EventDetailsScreen() {
             </AccessiblePressable>
             <AccessiblePressable
               accessibilityLabel="Share event"
+              onPress={handleShare}
             >
               <Share2 size={24} color="#9CA3AF" />
             </AccessiblePressable>
