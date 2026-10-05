@@ -99,6 +99,14 @@ function RootLayoutNav() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="family-onboarding"
+        options={{
+          title: "Your Family",
+          headerShown: false,
+          gestureEnabled: false,
+        }}
+      />
       <Stack.Screen 
         name="notifications" 
         options={{ 

@@ -639,6 +639,75 @@ export function useUpcomingBookings() {
   return { upcomingBookings, isLoading };
 }
 
+// ─── Family profile (post-signup onboarding) ─────────────────────────────────
+// GET/PUT /api/family-profile. Kids are managed via /children; this covers
+// schooling, family interests, location and completion. The option lists
+// come from the server so the app and website share one vocabulary.
+
+export interface ProfileOption { value: string; label: string }
+
+export interface FamilyProfile {
+  name: string | null;
+  city: string | null;
+  state: string | null;
+  schoolType: string | null;
+  interests: string[];
+  childrenCount: number;
+  completion: number;
+  profileCompleted: boolean;
+  options: { schoolTypes: ProfileOption[]; interests: ProfileOption[] };
+}
+
+export type FamilyProfileUpdate = Partial<Pick<FamilyProfile, 'city' | 'state' | 'schoolType' | 'interests'>> & {
+  complete?: boolean;
+};
+
+// enabled=false (signed out) skips the request entirely.
+export function useFamilyProfile(enabled = true) {
+  const [data, setData] = useState<FamilyProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(enabled);
+  const [isError, setIsError] = useState(false);
+  const version = useListVersion('familyProfile');
+  const childrenVersion = useListVersion('children'); // kids count toward completion
+
+  const load = useCallback(async () => {
+    if (!enabled) {
+      setData(null);
+      setIsLoading(false);
+      return;
+    }
+    try {
+      setIsLoading(true);
+      setIsError(false);
+      setData(await apiFetch<FamilyProfile>('/family-profile'));
+    } catch {
+      setIsError(true);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [enabled]);
+
+  useEffect(() => { load(); }, [load, version, childrenVersion]);
+  return { data, isLoading, isError, refetch: load };
+}
+
+export function useSaveFamilyProfile() {
+  const [isPending, setIsPending] = useState(false);
+
+  const mutateAsync = async (update: FamilyProfileUpdate) => {
+    setIsPending(true);
+    try {
+      const result = await apiFetch<FamilyProfile>('/family-profile', { method: 'PUT', body: JSON.stringify(update) });
+      bumpVersion('familyProfile');
+      return result;
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { mutateAsync, isPending };
+}
+
 // ─── Search ───────────────────────────────────────────────────────────────────
 
 // useEventSearch — tRPC-compatible with 300ms debounce

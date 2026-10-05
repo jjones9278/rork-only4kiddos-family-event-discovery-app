@@ -7,6 +7,7 @@ import { CategoryFilter } from '@/components/CategoryFilter';
 import { BrandedHeader } from '@/components/BrandedHeader';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
+import { ProfileCompletionCard } from '@/components/ProfileCompletionCard';
 import { useEventList } from '@/hooks/use-events-laravel';
 import { useFilters, toggleCategoryFilter } from '@/hooks/use-filters-store';
 import { useToastHelpers } from '@/components/ToastProvider';
@@ -61,6 +62,8 @@ export default function HomeScreen() {
         <Text style={styles.welcomeSubtext}>for your little ones</Text>
         <View style={styles.brandAccent} />
       </View>
+
+      <ProfileCompletionCard />
 
       <View style={styles.filterSection}>
         <View style={styles.filterHeader}>
