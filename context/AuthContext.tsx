@@ -12,6 +12,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '@/config/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { syncFirebaseUser } from '@/hooks/use-events-laravel';
 
 interface AuthContextType {
   user: User | null;
@@ -24,6 +25,13 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
+
+// Creates/updates this parent's mobile_users row on the Laravel API. It was
+// never called before, so most app users had no row (and, e.g., booking
+// confirmation emails had no address to go to). Never blocks auth.
+const syncUserRow = () => {
+  syncFirebaseUser().catch((error) => console.warn('[Auth] user sync failed', error?.message));
+};
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -80,6 +88,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signIn = async (email: string, password: string): Promise<UserCredential> => {
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
+      syncUserRow();
       return result;
     } catch (error: any) {
       console.error('Sign in error:', error);
@@ -94,8 +103,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Update display name if provided
       if (displayName && result.user) {
         await updateProfile(result.user, { displayName });
+        // Re-mint the ID token so its `name` claim (read by the API) includes it.
+        await result.user.getIdToken(true);
       }
-      
+
+      syncUserRow();
       return result;
     } catch (error: any) {
       console.error('Sign up error:', error);
@@ -117,6 +129,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const credential = GoogleAuthProvider.credential(idToken);
       const result = await signInWithCredential(auth, credential);
+      syncUserRow();
       return result;
     } catch (error: any) {
       console.error('Google sign in error:', error);

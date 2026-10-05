@@ -52,11 +52,8 @@ export default function SignupScreen() {
     setLoading(true);
     try {
       await signUp(email.trim(), password, name.trim());
-      Alert.alert(
-        'Welcome to Only4kiddos!', 
-        'Your family account has been created successfully. Let\'s start discovering amazing events!',
-        [{ text: 'Let\'s Go!', onPress: () => router.replace('/(tabs)' as any) }]
-      );
+      // Stage 2: a short guided profile step (kids, schooling, interests).
+      router.replace('/family-onboarding' as any);
     } catch (error: any) {
       Alert.alert('Signup Failed', error.message);
     } finally {
