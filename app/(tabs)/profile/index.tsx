@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { Plus, Calendar, Heart, Settings, ChevronRight, Edit2, Trash2, Star, Award, Crown, Mail, LogOut, UserX } from 'lucide-react-native';
+import { Plus, Calendar, Heart, Settings, ChevronRight, Edit2, Trash2, Star, Award, Crown, Mail, LogOut, UserX, Sparkles } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useChildren, useFavoriteEvents, useBookings, useUpcomingBookings, useDeleteChild, useDeleteAccount } from '@/hooks/use-events-laravel';
 import { LoadingState } from '@/components/LoadingState';
@@ -186,6 +186,22 @@ export default function ProfileScreen() {
             <Text style={styles.statLabel}>Attended</Text>
           </View>
         </View>
+      </View>
+
+      <View style={styles.section}>
+        <TouchableOpacity
+          style={[styles.menuItem, styles.fourbyMenuItem]}
+          onPress={() => router.push('/fourby-plan' as any)}
+          accessibilityRole="button"
+          accessibilityLabel="Open your Fourby plan"
+        >
+          <Sparkles size={20} color={Colors.primary} />
+          <View style={styles.fourbyMenuTextWrap}>
+            <Text style={[styles.menuText, styles.fourbyMenuText]}>Your Fourby Plan</Text>
+            <Text style={styles.fourbyMenuSub}>Curriculum, activities and co-ops picked for your family</Text>
+          </View>
+          <ChevronRight size={20} color={Colors.textTertiary} />
+        </TouchableOpacity>
       </View>
 
       <View style={[styles.section, styles.signOutSection]}>
@@ -404,6 +420,27 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSizes.base,
     color: Colors.textPrimary,
     marginLeft: Spacing.md,
+  },
+  fourbyMenuItem: {
+    backgroundColor: Colors.brandSurface,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: Colors.primaryLight,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.primaryLight,
+  },
+  fourbyMenuTextWrap: {
+    flex: 1,
+    marginLeft: Spacing.md,
+  },
+  fourbyMenuText: {
+    marginLeft: 0,
+    fontWeight: Typography.fontWeights.semibold,
+  },
+  fourbyMenuSub: {
+    fontSize: Typography.fontSizes.sm,
+    color: Colors.textSecondary,
+    marginTop: 2,
   },
   premiumMenuItem: {
     backgroundColor: Colors.brandSurface,
