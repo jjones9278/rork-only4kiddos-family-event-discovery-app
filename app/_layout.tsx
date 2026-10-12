@@ -76,6 +76,13 @@ function RootLayoutNav() {
           presentation: "card",
         }} 
       />
+      <Stack.Screen
+        name="fourby-plan"
+        options={{
+          title: "Your Fourby Plan",
+          presentation: "card",
+        }}
+      />
       <Stack.Screen 
         name="newsletter-settings" 
         options={{ 

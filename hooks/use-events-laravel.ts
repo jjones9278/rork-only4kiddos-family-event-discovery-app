@@ -108,7 +108,9 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 
     if (!res.ok) {
       console.log(`[API Failure] ${label}`, { status: res.status, response: data });
-      throw new Error((data && (data.error || data.message)) || `API error ${res.status}`);
+      const err = new Error((data && (data.error || data.message)) || `API error ${res.status}`) as Error & { status?: number };
+      err.status = res.status;
+      throw err;
     }
 
     console.log(`[API Success] ${label}`, data);
@@ -706,6 +708,80 @@ export function useSaveFamilyProfile() {
   };
 
   return { mutateAsync, isPending };
+}
+
+// ─── Fourby plan ─────────────────────────────────────────────────────────────
+// Plans are generated on the website. The API links this app account to the
+// family's web account by verified email (see 4kiddos PR #79).
+
+export type FourbyCategory =
+  | 'curriculum' | 'local_activity' | 'co_op' | 'partner_discount' | 'event' | 'resource' | 'esa_program';
+
+export interface FourbyFeedback {
+  rating: number | null;
+  helpful: boolean | null;
+  reason: string | null;
+  comment: string | null;
+}
+
+export interface FourbyItem {
+  id: number;
+  category: FourbyCategory | string;
+  position: number;
+  title: string;
+  description: string | null;
+  url: string | null;
+  childName: string | null;
+  feedback: FourbyFeedback;
+}
+
+export interface FourbyPlan {
+  linked: boolean;
+  reason?: 'email_unverified' | 'no_web_account' | 'no_plan';
+  planStatus?: 'pending' | 'ready' | 'failed' | string;
+  items: FourbyItem[];
+  reasons: { key: string; label: string }[];
+}
+
+export type FourbyFeedbackUpdate = Partial<FourbyFeedback>;
+
+// `unavailable` = the server doesn't have the Fourby API yet (404 on the list route).
+export function useFourbyPlan(enabled = true) {
+  const [data, setData] = useState<FourbyPlan | null>(null);
+  const [isLoading, setIsLoading] = useState(enabled);
+  const [isError, setIsError] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!enabled) {
+      setData(null);
+      setIsLoading(false);
+      return;
+    }
+    try {
+      setIsLoading(true);
+      setIsError(false);
+      setUnavailable(false);
+      setData(await apiFetch<FourbyPlan>('/fourby/recommendations'));
+    } catch (e) {
+      if ((e as { status?: number }).status === 404) setUnavailable(true);
+      else setIsError(true);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [enabled]);
+
+  useEffect(() => { load(); }, [load]);
+  return { data, isLoading, isError, unavailable, refetch: load, setData };
+}
+
+// Sends only the fields given; null clears one. Returns the server's copy of the item.
+export async function saveFourbyFeedback(itemId: number, update: FourbyFeedbackUpdate): Promise<FourbyItem> {
+  const res = await apiFetch<{ item: FourbyItem }>(`/fourby/recommendations/${itemId}/feedback`, {
+    method: 'PATCH',
+    body: JSON.stringify(update),
+  });
+  return res.item;
 }
 
 // ─── Search ───────────────────────────────────────────────────────────────────
