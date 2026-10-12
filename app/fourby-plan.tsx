@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Linking, RefreshControl,
 } from 'react-native';
-import { Star, ThumbsUp, ThumbsDown, ExternalLink, Sparkles } from 'lucide-react-native';
+import { ThumbsUp, ThumbsDown, ExternalLink, Sparkles } from 'lucide-react-native';
 import { AuthGuard } from '@/components/AuthGuard';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
@@ -91,7 +91,7 @@ export function FourbyPlanView({ enabled, email }: { enabled: boolean; email: st
       <View style={styles.hero}>
         <Sparkles size={22} color={Colors.primary} />
         <Text style={styles.heroTitle}>Your Fourby plan</Text>
-        <Text style={styles.heroBody}>Rate each suggestion so Fourby can get better at picking for your family.</Text>
+        <Text style={styles.heroBody}>Tap 👍 or 👎 on each suggestion so Fourby can get better at picking for your family.</Text>
       </View>
       <PlanSections plan={data} onSave={save} />
     </ScrollView>
@@ -142,17 +142,20 @@ function PlanCard({ item, reasons, onSave }: {
   reasons: FourbyPlan['reasons'];
   onSave: (i: FourbyItem, u: FourbyFeedbackUpdate) => Promise<boolean>;
 }) {
-  const { rating, helpful, reason, comment } = item.feedback;
+  const { helpful, reason, comment } = item.feedback;
   const [draft, setDraft] = useState(comment ?? '');
   const [savingNote, setSavingNote] = useState(false);
+  // "Skip" hides the 👎 follow-up for this visit; nothing is saved. A fresh 👎 shows it again.
+  const [dismissed, setDismissed] = useState(false);
+  const showFollowUp = helpful === false && !dismissed;
   const saved = comment ?? '';
   const trimmed = draft.trim();
 
   const label = useMemo(() => {
     if (helpful === null) return 'Helpful?';
-    if (helpful === false && !reason) return 'What was off?';
+    if (showFollowUp && !reason) return 'What was off?';
     return 'Thanks!';
-  }, [helpful, reason]);
+  }, [helpful, reason, showFollowUp]);
 
   const saveNote = async () => {
     setSavingNote(true);
@@ -172,25 +175,6 @@ function PlanCard({ item, reasons, onSave }: {
         </TouchableOpacity>
       )}
 
-      <View style={styles.stars} accessibilityRole="radiogroup" accessibilityLabel="Rate this suggestion">
-        {[1, 2, 3, 4, 5].map((n) => {
-          const on = (rating ?? 0) >= n;
-          return (
-            <TouchableOpacity
-              key={n}
-              onPress={() => onSave(item, { rating: rating === n ? null : n })}
-              hitSlop={6}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: rating === n }}
-              accessibilityLabel={`Rate ${n} out of 5`}
-            >
-              <Star size={24} color={on ? Colors.accent : Colors.textTertiary} fill={on ? Colors.accent : 'transparent'} />
-            </TouchableOpacity>
-          );
-        })}
-        {!!rating && <Text style={styles.starsLabel}>{rating}/5</Text>}
-      </View>
-
       <View style={styles.thumbs}>
         <Text style={styles.thumbsLabel}>{label}</Text>
         <TouchableOpacity
@@ -204,7 +188,7 @@ function PlanCard({ item, reasons, onSave }: {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.thumb, helpful === false && styles.thumbOn]}
-          onPress={() => onSave(item, { helpful: false })}
+          onPress={() => { setDismissed(false); onSave(item, { helpful: false }); }}
           accessibilityRole="button"
           accessibilityState={{ selected: helpful === false }}
           accessibilityLabel="This was not helpful"
@@ -213,7 +197,7 @@ function PlanCard({ item, reasons, onSave }: {
         </TouchableOpacity>
       </View>
 
-      {helpful === false && (
+      {showFollowUp && (
         <View style={styles.reasons} accessibilityLabel="What was off about this suggestion?">
           {reasons.map((r) => (
             <TouchableOpacity
@@ -229,7 +213,7 @@ function PlanCard({ item, reasons, onSave }: {
         </View>
       )}
 
-      {helpful === false && !!reason && (
+      {showFollowUp && (
         <View style={styles.note}>
           <Text style={styles.noteLabel}>
             Anything else Fourby should know? <Text style={styles.noteOptional}>(optional)</Text>
@@ -254,6 +238,14 @@ function PlanCard({ item, reasons, onSave }: {
               <Text style={styles.noteSaveText}>{saved !== '' && trimmed === '' ? 'Remove note' : 'Save note'}</Text>
             </TouchableOpacity>
             {saved !== '' && trimmed === saved && <Text style={styles.noteSaved}>Saved ✓</Text>}
+            <TouchableOpacity
+              style={styles.skip}
+              onPress={() => setDismissed(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Skip telling us what was off"
+            >
+              <Text style={styles.skipText}>{!reason && saved === '' ? 'Skip' : 'Done'}</Text>
+            </TouchableOpacity>
           </View>
         </View>
       )}
@@ -333,8 +325,6 @@ const styles = StyleSheet.create({
   cardBody: { fontSize: Typography.fontSizes.sm, color: Colors.textSecondary, marginTop: Spacing.xs, lineHeight: 20 },
   link: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginTop: Spacing.sm, alignSelf: 'flex-start' },
   linkText: { color: Colors.primary, fontWeight: Typography.fontWeights.semibold },
-  stars: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, marginTop: Spacing.md },
-  starsLabel: { marginLeft: Spacing.sm, color: Colors.textSecondary, fontSize: Typography.fontSizes.sm },
   thumbs: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginTop: Spacing.sm },
   thumbsLabel: { color: Colors.textSecondary, fontSize: Typography.fontSizes.sm, marginRight: Spacing.xs },
   thumb: {
@@ -361,6 +351,8 @@ const styles = StyleSheet.create({
   noteSave: { backgroundColor: Colors.primary, borderRadius: BorderRadius.md, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm },
   noteSaveDisabled: { opacity: 0.45 },
   noteSaveText: { color: Colors.textOnPrimary, fontWeight: Typography.fontWeights.semibold, fontSize: Typography.fontSizes.sm },
+  skip: { marginLeft: 'auto', paddingVertical: Spacing.xs, paddingHorizontal: Spacing.xs },
+  skipText: { color: Colors.textSecondary, fontSize: Typography.fontSizes.sm, textDecorationLine: 'underline' },
   noteSaved: { color: Colors.success, fontWeight: Typography.fontWeights.semibold, fontSize: Typography.fontSizes.sm },
   notice: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing['2xl'], backgroundColor: Colors.background, gap: Spacing.md },
   noticeTitle: { fontSize: Typography.fontSizes.xl, fontWeight: Typography.fontWeights.bold, color: Colors.textPrimary, textAlign: 'center' },
