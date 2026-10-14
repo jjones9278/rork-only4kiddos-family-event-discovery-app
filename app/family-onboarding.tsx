@@ -13,6 +13,7 @@ import {
   useChildren, useCreateChild, useDeleteChild, useFamilyProfile, useSaveFamilyProfile,
 } from '@/hooks/use-events-laravel';
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/colors';
+import { findMarket, initialMarketSlug, suggestCities } from '@/lib/markets';
 
 const STEPS = ['Your kids', 'Your family', 'What you love'] as const;
 const AVATAR_COLORS = ['#7C3AED', '#EC4899', '#10B981', '#F59E0B', '#3B82F6', '#EF4444'];
@@ -36,6 +37,10 @@ export default function FamilyOnboardingScreen() {
   const [schoolType, setSchoolType] = useState<string | null>(null);
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
+  // Area = one of the server's markets, or "somewhere else" (free-text
+  // city/state, no market). Neither picked yet = both false/null.
+  const [marketSlug, setMarketSlug] = useState<string | null>(null);
+  const [otherArea, setOtherArea] = useState(false);
   const [interests, setInterests] = useState<string[]>([]);
   const [prefilled, setPrefilled] = useState(false);
 
@@ -45,6 +50,9 @@ export default function FamilyOnboardingScreen() {
     setSchoolType(profile.data.schoolType);
     setCity(profile.data.city ?? '');
     setState(profile.data.state ?? '');
+    const slug = initialMarketSlug(profile.data.options.markets ?? [], profile.data);
+    setMarketSlug(slug);
+    setOtherArea(!slug && !!profile.data.city);
     setInterests(profile.data.interests);
     setPrefilled(true);
   }, [profile.data, prefilled]);
@@ -66,6 +74,27 @@ export default function FamilyOnboardingScreen() {
   }
 
   const options = profile.data.options;
+  // Older API builds don't send markets — fall back to plain city/state.
+  const markets = options.markets ?? [];
+  const market = findMarket(markets, marketSlug);
+  const citySuggestions = suggestCities(market, city);
+
+  const pickArea = (slug: string | null) => {
+    if (slug === marketSlug && !otherArea) return;
+    setMarketSlug(slug);
+    setOtherArea(slug === null);
+    setCity('');
+    setState(slug ? findMarket(markets, slug)?.stateCode ?? '' : '');
+  };
+
+  const locationUpdate = () => {
+    const c = city.trim() || null;
+    if (market) return { market: market.slug, city: c, state: market.stateCode };
+    // "Somewhere else" or no markets offered: the server resolves the city
+    // to a market if it turns out to be one we serve.
+    if (otherArea || markets.length === 0) return { city: c, state: state.trim() || null };
+    return {};
+  };
   const busy = saveProfile.isPending || createChild.isPending;
 
   const addChild = async (): Promise<boolean> => {
@@ -114,7 +143,7 @@ export default function FamilyOnboardingScreen() {
         if ((childName.trim() || childAge.trim()) && !(await addChild())) return;
       }
       if (step === 1) {
-        await saveProfile.mutateAsync({ schoolType, city: city.trim() || null, state: state.trim() || null });
+        await saveProfile.mutateAsync({ schoolType, ...locationUpdate() });
       }
       setStep((s) => Math.min(s + 1, STEPS.length - 1));
     } catch {
@@ -239,27 +268,91 @@ export default function FamilyOnboardingScreen() {
 
                 <Text style={[styles.question, styles.questionSpaced]}>Where are you?</Text>
                 <Text style={styles.hint}>So we can show events near you.</Text>
-                <View style={styles.addRow}>
-                  <TextInput
-                    style={[styles.input, styles.nameInput]}
-                    placeholder="City"
-                    value={city}
-                    onChangeText={setCity}
-                    autoCapitalize="words"
-                    textContentType="addressCity"
-                    placeholderTextColor={Colors.textTertiary}
-                  />
-                  <TextInput
-                    style={[styles.input, styles.stateInput]}
-                    placeholder="State"
-                    value={state}
-                    onChangeText={setState}
-                    autoCapitalize="characters"
-                    maxLength={20}
-                    textContentType="addressState"
-                    placeholderTextColor={Colors.textTertiary}
-                  />
-                </View>
+                {markets.length > 0 && (
+                  <View style={styles.chips}>
+                    {markets.map((m) => {
+                      const selected = marketSlug === m.slug;
+                      return (
+                        <TouchableOpacity
+                          key={m.slug}
+                          style={[styles.interest, selected && styles.interestSelected]}
+                          onPress={() => pickArea(m.slug)}
+                          accessibilityRole="radio"
+                          accessibilityState={{ checked: selected }}
+                        >
+                          <Text style={[styles.interestText, selected && styles.interestTextSelected]}>
+                            {m.stateCode ? `${m.name} area, ${m.stateCode}` : `${m.name} area`}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                    <TouchableOpacity
+                      style={[styles.interest, otherArea && styles.interestSelected]}
+                      onPress={() => pickArea(null)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: otherArea }}
+                    >
+                      <Text style={[styles.interestText, otherArea && styles.interestTextSelected]}>Somewhere else</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                {market && (
+                  <>
+                    <TextInput
+                      style={styles.input}
+                      placeholder={`City or suburb near ${market.name}`}
+                      value={city}
+                      onChangeText={setCity}
+                      autoCapitalize="words"
+                      textContentType="addressCity"
+                      placeholderTextColor={Colors.textTertiary}
+                      accessibilityLabel="City or suburb"
+                    />
+                    {citySuggestions.length > 0 && (
+                      <View style={[styles.chips, styles.suggestions]}>
+                        {citySuggestions.map((name) => (
+                          <TouchableOpacity
+                            key={name}
+                            style={styles.kidChip}
+                            onPress={() => setCity(name)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Use ${name}`}
+                          >
+                            <Text style={styles.kidChipText}>{name}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </>
+                )}
+                {(otherArea || markets.length === 0) && (
+                  <>
+                    {otherArea && (
+                      <Text style={styles.hint}>{"We're not in your area yet — tell us where you are and we'll let you know when we are."}</Text>
+                    )}
+                    <View style={styles.addRow}>
+                      <TextInput
+                        style={[styles.input, styles.nameInput]}
+                        placeholder="City"
+                        value={city}
+                        onChangeText={setCity}
+                        autoCapitalize="words"
+                        textContentType="addressCity"
+                        placeholderTextColor={Colors.textTertiary}
+                      />
+                      <TextInput
+                        style={[styles.input, styles.stateInput]}
+                        placeholder="State"
+                        value={state}
+                        onChangeText={setState}
+                        autoCapitalize="characters"
+                        maxLength={20}
+                        textContentType="addressState"
+                        placeholderTextColor={Colors.textTertiary}
+                      />
+                    </View>
+                  </>
+                )}
               </>
             )}
 
@@ -369,6 +462,7 @@ const styles = StyleSheet.create({
   nameInput: { flex: 1, minWidth: 0 },
   ageInput: { width: 72 },
   stateInput: { width: 96 },
+  suggestions: { marginTop: Spacing.sm, marginBottom: 0 },
   addButton: {
     width: 46, height: 46, borderRadius: BorderRadius.lg, backgroundColor: Colors.primary,
     alignItems: 'center', justifyContent: 'center',

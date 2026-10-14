@@ -10,12 +10,16 @@ import { useSyncExternalStore } from 'react';
 
 export interface EventFilters {
   categories: string[];
+  // Market slug. undefined = not chosen yet (home falls back to the family
+  // profile's market); null = explicitly "All areas".
+  market?: string | null;
   ageRange: { min: number; max: number };
   priceRange: { min: number; max: number };
 }
 
 const DEFAULT_FILTERS: EventFilters = {
   categories: [],
+  market: undefined,
   ageRange: { min: 0, max: 18 },
   priceRange: { min: 0, max: 100 },
 };
@@ -30,6 +34,11 @@ const notify = () => subscribers.forEach((fn) => fn());
 
 export function useFilters(): EventFilters {
   return useSyncExternalStore(subscribe, () => state, () => state);
+}
+
+// Non-hook read, for code outside React (and tests).
+export function getFilters(): EventFilters {
+  return state;
 }
 
 export function setFilters(next: EventFilters) {
@@ -57,6 +66,17 @@ export function setAgeRange(ageRange: { min: number; max: number }) {
 export function setPriceRange(priceRange: { min: number; max: number }) {
   state = { ...state, priceRange };
   notify();
+}
+
+export function setMarketFilter(market: string | null) {
+  state = { ...state, market };
+  notify();
+}
+
+// The market the event list should use: an explicit pick wins, else the
+// family's own market, else every market.
+export function effectiveMarket(filters: EventFilters, profileMarket: string | null | undefined): string | null {
+  return filters.market !== undefined ? filters.market : profileMarket ?? null;
 }
 
 export function resetFilters() {
