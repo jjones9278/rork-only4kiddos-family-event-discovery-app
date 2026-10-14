@@ -37,3 +37,6 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 .vercel
+
+# unit test build output (npm test)
+.test-build/

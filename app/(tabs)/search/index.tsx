@@ -6,12 +6,21 @@ import { BrandedHeader } from '@/components/BrandedHeader';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
 import EmptyState from '@/components/EmptyState';
-import { useEventSearch } from '@/hooks/use-events-laravel';
+import { useEventSearch, useFamilyProfile, useMarkets } from '@/hooks/use-events-laravel';
+import { useFilters, effectiveMarket } from '@/hooks/use-filters-store';
+import { useAuth } from '@/context/AuthContext';
+import { marketLabel } from '@/lib/markets';
+import { router } from 'expo-router';
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/colors';
 
 export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState('');
-  const { data, isLoading, isError, refetch } = useEventSearch(searchQuery);
+  const { user } = useAuth();
+  const profile = useFamilyProfile(!!user);
+  const { data: markets } = useMarkets();
+  // Same area as the home tab (Filters screen / family profile).
+  const market = effectiveMarket(useFilters(), profile.data?.market);
+  const { data, isLoading, isError, refetch } = useEventSearch(searchQuery, { market });
   const events = data?.items || [];
 
   // Show empty state when search has no results
@@ -20,7 +29,8 @@ export default function SearchScreen() {
       <View style={styles.container}>
         <BrandedHeader 
           showNotifications={false}
-          onLocationPress={() => console.log('Location pressed')}
+          location={marketLabel(markets, market)}
+          onLocationPress={() => router.push('/filters')}
         />
         
         <View style={styles.searchSection}>
@@ -100,7 +110,8 @@ export default function SearchScreen() {
     <View style={styles.container}>
       <BrandedHeader 
         showNotifications={false}
-        onLocationPress={() => console.log('Location pressed')}
+        location={marketLabel(markets, market)}
+        onLocationPress={() => router.push('/filters')}
       />
       
       <View style={styles.searchSection}>

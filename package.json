@@ -12,6 +12,7 @@
     "start:server": "bun run backend/server.ts",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
+    "test": "rm -rf .test-build && tsc -p tsconfig.test.json && node --test .test-build/__tests__/",
     "format": "prettier --write .",
     "dev:all": "concurrently -k \"bun run backend/server.ts\" \"expo start\""
   },

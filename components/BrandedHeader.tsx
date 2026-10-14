@@ -13,7 +13,7 @@ interface BrandedHeaderProps {
 }
 
 export function BrandedHeader({ 
-  location = 'San Francisco, CA', 
+  location = 'All areas', 
   showNotifications = true,
   onLocationPress,
   onNotificationPress 

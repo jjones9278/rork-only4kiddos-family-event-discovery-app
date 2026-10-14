@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { useNavigation } from '@react-navigation/native';
 import { Calendar, MapPin, DollarSign, Users, X, Sparkles, Clock } from 'lucide-react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { useCreateEvent, useCategories } from '@/hooks/use-events-laravel';
+import { useCreateEvent, useCategories, useMarkets } from '@/hooks/use-events-laravel';
 import { BrandLogo } from '@/components/BrandLogo';
 import { BrandedButton } from '@/components/BrandedButton';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -30,6 +30,7 @@ const parseTime = (s: string): Date => {
 export default function CreateEventScreen() {
   const createEvent = useCreateEvent();
   const { data: categories, isLoading: categoriesLoading } = useCategories();
+  const { data: markets } = useMarkets();
   const navigation = useNavigation();
 
   const safeGoBack = () => {
@@ -66,6 +67,8 @@ export default function CreateEventScreen() {
   const [minAge, setMinAge] = useState('');
   const [maxAge, setMaxAge] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  // null = let the server use the host profile's market.
+  const [marketSlug, setMarketSlug] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     if (!title || !description || !date || !startTime || !endTime || !venue || !maxAttendees || !minAge || !maxAge) {
@@ -98,6 +101,7 @@ export default function CreateEventScreen() {
         ticket_name: ticketName || 'General Admission',
         age_min: parseInt(minAge),
         age_max: parseInt(maxAge),
+        ...(marketSlug ? { market: marketSlug } : {}),
       }
       console.log("Payload",JSON.stringify(obj))
       await createEvent.mutateAsync(obj);
@@ -349,6 +353,33 @@ export default function CreateEventScreen() {
             />
           </View>
         </View>
+
+        {markets.length > 0 && (
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Area</Text>
+            <Text style={styles.helperText}>{"Where families will find this listing. Leave unselected to use your host profile's area."}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.categoryList}>
+                {markets.map((m) => {
+                  const selected = marketSlug === m.slug;
+                  return (
+                    <TouchableOpacity
+                      key={m.slug}
+                      style={[styles.categoryChip, selected && { backgroundColor: Colors.primary }]}
+                      onPress={() => setMarketSlug(selected ? null : m.slug)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: selected }}
+                    >
+                      <Text style={[styles.categoryChipText, selected && styles.categoryChipTextSelected]}>
+                        {m.stateCode ? `${m.name}, ${m.stateCode}` : m.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
+        )}
 
         <View style={styles.row}>
           <View style={[styles.inputGroup, styles.halfWidth]}>

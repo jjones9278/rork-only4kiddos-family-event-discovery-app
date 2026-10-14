@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
 import { getAuth } from 'firebase/auth';
+import { eventQueryParams, type Market } from '@/lib/markets';
 
 // ─── Shared favorites store ──────────────────────────────────────────────────
 // Module-level so every screen sees the same state. Seeded from API responses
@@ -142,6 +143,8 @@ export interface Event {
   price: number;
   ageRange: { min: number; max: number };
   category: string;
+  market: string | null;      // market slug, e.g. 'detroit'
+  marketName: string | null;
   hostName: string;
   hostImage: string;
   capacity: number;
@@ -195,6 +198,7 @@ export function useEvents(filters?: {
   categories?: string[];
   priceMin?: number;
   priceMax?: number;
+  market?: string | null;
 }) {
   const [data, setData] = useState<{ items: Event[]; total: number; hasMore: boolean } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -203,12 +207,7 @@ export function useEvents(filters?: {
   const load = useCallback(async () => {
     try {
       setIsLoading(true);
-      const params = new URLSearchParams();
-      if (filters?.search) params.set('search', filters.search);
-      if (filters?.categories?.length) params.set('categories', filters.categories.join(','));
-      if (filters?.priceMin != null) params.set('price_min', String(filters.priceMin));
-      if (filters?.priceMax != null) params.set('price_max', String(filters.priceMax));
-      const result = await apiFetch<{ items: Event[]; total: number; hasMore: boolean }>(`/events?${params}`);
+      const result = await apiFetch<{ items: Event[]; total: number; hasMore: boolean }>(`/events?${eventQueryParams(filters)}`);
       seedFavorites(result.items);
       setData(result);
     } catch (e) {
@@ -216,7 +215,7 @@ export function useEvents(filters?: {
     } finally {
       setIsLoading(false);
     }
-  }, [filters?.search, filters?.categories?.join(','), filters?.priceMin, filters?.priceMax]);
+  }, [filters?.search, filters?.categories?.join(','), filters?.priceMin, filters?.priceMax, filters?.market]);
 
   useEffect(() => { load(); }, [load]);
   return { data, isLoading, error, refetch: load };
@@ -228,6 +227,7 @@ export function useEventList(filters?: {
   searchQuery?: string;
   priceRange?: { min: number; max: number };
   ageRange?: { min: number; max: number };
+  market?: string | null;
   limit?: number;
   offset?: number;
 }) {
@@ -236,6 +236,7 @@ export function useEventList(filters?: {
     categories: filters?.categories,
     priceMin: filters?.priceRange?.min,
     priceMax: filters?.priceRange?.max,
+    market: filters?.market,
   });
   return { data, isLoading, isError: !!error, refetch };
 }
@@ -294,6 +295,7 @@ export interface CreateEventApiInput {
   ticket_name: string;
   age_min: number;
   age_max: number;
+  market?: string;      // market slug; omitted = the host profile's market
 }
 
 // useCreateEvent — accepts either the documented API shape OR the legacy
@@ -341,7 +343,41 @@ function toCreateEventApiPayload(input: any): CreateEventApiInput {
     ticket_name: input.ticket_name || 'General Admission',
     age_min: Number(input.ageRange?.min ?? input.age_min ?? 0),
     age_max: Number(input.ageRange?.max ?? input.age_max ?? 18),
+    ...(input.market ? { market: String(input.market) } : {}),
   };
+}
+
+// useMarkets — active markets + their cities, from the server's markets
+// table (so a new market or city needs no app release). Public, no auth.
+// Fetched once per launch and shared across screens.
+let marketsCache: Market[] | null = null;
+let marketsRequest: Promise<Market[]> | null = null;
+
+function fetchMarkets(): Promise<Market[]> {
+  marketsRequest ??= apiFetch<{ items: Market[] }>('/markets')
+    .then((r) => (marketsCache = Array.isArray(r?.items) ? r.items : []))
+    .catch((e) => {
+      marketsRequest = null; // allow a retry on the next mount
+      throw e;
+    });
+  return marketsRequest;
+}
+
+export function useMarkets() {
+  const [data, setData] = useState<Market[]>(marketsCache ?? []);
+  const [isLoading, setIsLoading] = useState(marketsCache === null);
+
+  useEffect(() => {
+    if (marketsCache) return;
+    let live = true;
+    fetchMarkets()
+      .then((items) => { if (live) setData(items); })
+      .catch(() => {}) // no markets = no market UI; the rest of the app still works
+      .finally(() => { if (live) setIsLoading(false); });
+    return () => { live = false; };
+  }, []);
+
+  return { data, isLoading };
 }
 
 export function useCategories() {
@@ -643,7 +679,7 @@ export function useUpcomingBookings() {
 
 // ─── Family profile (post-signup onboarding) ─────────────────────────────────
 // GET/PUT /api/family-profile. Kids are managed via /children; this covers
-// schooling, family interests, location and completion. The option lists
+// schooling, family interests, location (market + city) and completion. The option lists
 // come from the server so the app and website share one vocabulary.
 
 export interface ProfileOption { value: string; label: string }
@@ -652,15 +688,17 @@ export interface FamilyProfile {
   name: string | null;
   city: string | null;
   state: string | null;
+  market: string | null;   // slug of the family's market, null = outside our markets
   schoolType: string | null;
   interests: string[];
   childrenCount: number;
   completion: number;
   profileCompleted: boolean;
-  options: { schoolTypes: ProfileOption[]; interests: ProfileOption[] };
+  // markets is absent on API builds older than the Detroit prep change.
+  options: { schoolTypes: ProfileOption[]; interests: ProfileOption[]; markets?: Market[] };
 }
 
-export type FamilyProfileUpdate = Partial<Pick<FamilyProfile, 'city' | 'state' | 'schoolType' | 'interests'>> & {
+export type FamilyProfileUpdate = Partial<Pick<FamilyProfile, 'city' | 'state' | 'market' | 'schoolType' | 'interests'>> & {
   complete?: boolean;
 };
 
@@ -787,7 +825,7 @@ export async function saveFourbyFeedback(itemId: number, update: FourbyFeedbackU
 // ─── Search ───────────────────────────────────────────────────────────────────
 
 // useEventSearch — tRPC-compatible with 300ms debounce
-export function useEventSearch(searchQuery: string, filters: { categories?: string[] } = {}) {
+export function useEventSearch(searchQuery: string, filters: { categories?: string[]; market?: string | null } = {}) {
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
 
   useEffect(() => {

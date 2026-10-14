@@ -8,8 +8,10 @@ import { BrandedHeader } from '@/components/BrandedHeader';
 import { LoadingState } from '@/components/LoadingState';
 import { ErrorState } from '@/components/ErrorState';
 import { ProfileCompletionCard } from '@/components/ProfileCompletionCard';
-import { useEventList } from '@/hooks/use-events-laravel';
-import { useFilters, toggleCategoryFilter } from '@/hooks/use-filters-store';
+import { useEventList, useFamilyProfile, useMarkets } from '@/hooks/use-events-laravel';
+import { useFilters, toggleCategoryFilter, effectiveMarket } from '@/hooks/use-filters-store';
+import { useAuth } from '@/context/AuthContext';
+import { marketLabel } from '@/lib/markets';
 import { useToastHelpers } from '@/components/ToastProvider';
 import { EventCategory } from '@/types/event';
 import { router } from 'expo-router';
@@ -19,8 +21,14 @@ export default function HomeScreen() {
   const { toastSuccess, toastError } = useToastHelpers();
   const filterState = useFilters();
   const selectedCategories = filterState.categories as EventCategory[];
+  const { user } = useAuth();
+  const profile = useFamilyProfile(!!user);
+  const { data: markets } = useMarkets();
+  // Families see their own area by default; the Filters screen can widen it.
+  const market = effectiveMarket(filterState, profile.data?.market);
 
   const filters = {
+    market,
     categories: selectedCategories.length > 0 ? selectedCategories : undefined,
     priceRange: filterState.priceRange,
     ageRange: filterState.ageRange,
@@ -50,7 +58,8 @@ export default function HomeScreen() {
   const ListHeader = () => (
     <View>
       <BrandedHeader 
-        onLocationPress={() => console.log('Location pressed')}
+        location={marketLabel(markets, market)}
+        onLocationPress={() => router.push('/filters')}
         onNotificationPress={() => console.log('Notifications pressed')}
       />
       

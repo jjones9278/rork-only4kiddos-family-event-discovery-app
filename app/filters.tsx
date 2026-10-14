@@ -6,19 +6,25 @@ import { EventCategory } from '@/types/event';
 import { categories } from '@/mocks/categories';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
-import { useFilters, setFilters, resetFilters } from '@/hooks/use-filters-store';
+import { useFilters, setFilters, resetFilters, effectiveMarket } from '@/hooks/use-filters-store';
+import { useAuth } from '@/context/AuthContext';
+import { useFamilyProfile, useMarkets } from '@/hooks/use-events-laravel';
 
 export default function FiltersScreen() {
   // Seed local working copy from the shared store. The store is only written
   // when the user taps Apply, so a partially-tweaked filter that's then
   // dismissed (back gesture, X) doesn't leak.
   const current = useFilters();
+  const { user } = useAuth();
+  const profile = useFamilyProfile(!!user);
+  const { data: markets } = useMarkets();
+  const [market, setMarket] = useState<string | null>(effectiveMarket(current, profile.data?.market));
   const [selectedCategories, setSelectedCategories] = useState<EventCategory[]>(current.categories as EventCategory[]);
   const [ageRange, setAgeRange] = useState(current.ageRange);
   const [priceRange, setPriceRange] = useState(current.priceRange);
 
   const handleApply = () => {
-    setFilters({ categories: selectedCategories, ageRange, priceRange });
+    setFilters({ categories: selectedCategories, ageRange, priceRange, market });
     router.back();
   };
 
@@ -26,6 +32,7 @@ export default function FiltersScreen() {
     setSelectedCategories([]);
     setAgeRange({ min: 0, max: 18 });
     setPriceRange({ min: 0, max: 100 });
+    setMarket(profile.data?.market ?? null); // back to the family's own area
     resetFilters();
   };
 
@@ -47,6 +54,31 @@ export default function FiltersScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {markets.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Area</Text>
+            <View style={styles.categoriesGrid}>
+              {[{ slug: null as string | null, label: 'All areas' }, ...markets.map((m) => ({
+                slug: m.slug as string | null,
+                label: m.stateCode ? `${m.name}, ${m.stateCode}` : m.name,
+              }))].map((o) => {
+                const selected = market === o.slug;
+                return (
+                  <TouchableOpacity
+                    key={o.slug ?? 'all'}
+                    style={[styles.categoryChip, selected && { backgroundColor: '#7C3AED' }]}
+                    onPress={() => setMarket(o.slug)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: selected }}
+                  >
+                    <Text style={[styles.categoryChipText, selected && styles.categoryChipTextSelected]}>{o.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Categories</Text>
           <View style={styles.categoriesGrid}>
